@@ -97,8 +97,14 @@ tasks.test {
     finalizedBy(tasks.jacocoTestReport)
 }
 
+// Application bootstrap code is not business logic and is excluded from coverage.
+val coverageExclusions = listOf("**/CoreServiceApplication.class")
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    classDirectories.setFrom(
+        sourceSets.main.get().output.classesDirs.map { fileTree(it) { exclude(coverageExclusions) } },
+    )
     reports {
         xml.required = true
         html.required = true
@@ -114,6 +120,9 @@ val criticalPackages =
 
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
+    classDirectories.setFrom(
+        sourceSets.main.get().output.classesDirs.map { fileTree(it) { exclude(coverageExclusions) } },
+    )
     violationRules {
         rule {
             element = "BUNDLE"
