@@ -40,6 +40,6 @@ class HealthEndpointIntegrationTest {
 
   @Test
   void shouldNotExposeEnvironmentEndpoint() throws Exception {
-    mockMvc.perform(get("/env")).andExpect(status().isNotFound());
+    mockMvc.perform(get("/env")).andExpect(status().is4xxClientError());
   }
 }

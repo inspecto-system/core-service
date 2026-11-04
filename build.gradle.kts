@@ -103,7 +103,10 @@ val coverageExclusions = listOf("**/CoreServiceApplication.class")
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
     classDirectories.setFrom(
-        sourceSets.main.get().output.classesDirs.map { fileTree(it) { exclude(coverageExclusions) } },
+        sourceSets.main
+            .get()
+            .output.classesDirs
+            .map { fileTree(it) { exclude(coverageExclusions) } },
     )
     reports {
         xml.required = true
@@ -121,7 +124,10 @@ val criticalPackages =
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     classDirectories.setFrom(
-        sourceSets.main.get().output.classesDirs.map { fileTree(it) { exclude(coverageExclusions) } },
+        sourceSets.main
+            .get()
+            .output.classesDirs
+            .map { fileTree(it) { exclude(coverageExclusions) } },
     )
     violationRules {
         rule {
