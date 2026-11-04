@@ -89,6 +89,7 @@ spotbugs {
 
 tasks.withType<com.github.spotbugs.snom.SpotBugsTask>().configureEach {
     reports.create("html") { required = true }
+    reports.create("text") { required = true }
 }
 
 // ---------- Tests and coverage (CODE_QUALITY.md §4–5) ----------
