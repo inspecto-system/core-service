@@ -12,11 +12,25 @@
         <!-- One behaviour per test is enforced by review; several MockMvc expectations per test are fine -->
         <exclude name="UnitTestContainsTooManyAsserts"/>
     </rule>
+    <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
+        <properties>
+            <!-- MockMvc expectations are assertions -->
+            <property name="extraAssertMethodNames" value="andExpect"/>
+        </properties>
+    </rule>
     <rule ref="category/java/errorprone.xml">
         <exclude name="AvoidFieldNameMatchingMethodName"/>
         <exclude name="MissingSerialVersionUID"/>
+        <!-- Nullable columns (for example locked_until) are cleared by assigning null -->
+        <exclude name="NullAssignment"/>
     </rule>
     <rule ref="category/java/security.xml"/>
+    <rule ref="category/java/errorprone.xml/MissingStaticMethodInNonInstantiatableClass">
+        <properties>
+            <!-- Holder classes of request/response records (*Dtos) are namespaces, not utilities -->
+            <property name="violationSuppressXPath" value="//ClassDeclaration[ends-with(@SimpleName, 'Dtos')]"/>
+        </properties>
+    </rule>
     <rule ref="category/java/multithreading.xml">
         <exclude name="UseConcurrentHashMap"/>
         <exclude name="DoNotUseThreads"/>

@@ -76,6 +76,10 @@ pmd {
     isIgnoreFailures = false
 }
 
+tasks.named<Pmd>("pmdTest") {
+    ruleSetFiles = files("config/pmd/ruleset-test.xml")
+}
+
 spotbugs {
     ignoreFailures = false
     excludeFilter = file("config/spotbugs/exclude.xml")
@@ -101,11 +105,12 @@ tasks.jacocoTestReport {
     }
 }
 
-val criticalPackages = listOf(
-    "dev.inspecto.core.security*",
-    "dev.inspecto.core.comparison*",
-    "dev.inspecto.core.*.domain*",
-)
+val criticalPackages =
+    listOf(
+        "dev.inspecto.core.security*",
+        "dev.inspecto.core.comparison*",
+        "dev.inspecto.core.*.domain*",
+    )
 
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
