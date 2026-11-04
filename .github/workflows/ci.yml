@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: inspecto-system/platform/.github/workflows/java-gradle.yml@ci/reusable-workflows
+    permissions:
+      contents: write # dependency graph submission
+    with:
+      java-version: "21"
+
+  security:
+    uses: inspecto-system/platform/.github/workflows/security.yml@ci/reusable-workflows
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      codeql-language: java-kotlin
+      codeql-build-mode: none

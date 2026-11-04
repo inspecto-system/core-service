@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: core-service
+  datasource:
+    # Runtime connections use the DML-only role; migrations use the owner role (SECURITY.md §6).
+    url: ${CORE_DB_URL:jdbc:postgresql://127.0.0.1:5432/inspecto_core?sslmode=require}
+    username: ${CORE_DB_APP_USER:core_app}
+    password: ${CORE_DB_APP_PASSWORD:}
+  flyway:
+    url: ${CORE_DB_URL:jdbc:postgresql://127.0.0.1:5432/inspecto_core?sslmode=require}
+    user: ${CORE_DB_MIGRATOR_USER:core_migrator}
+    password: ${CORE_DB_MIGRATOR_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${CORE_PORT:8081}
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health
+      path-mapping:
+        health: health
+  endpoint:
+    health:
+      show-details: never
+      # /health/live and /health/ready (docs/API_DOCUMENTATION.md §5)
+      group:
+        live:
+          include: livenessState
+        ready:
+          include: readinessState,db
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
