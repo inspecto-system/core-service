@@ -7,7 +7,7 @@ spring:
     username: ${CORE_DB_APP_USER:core_app}
     password: ${CORE_DB_APP_PASSWORD:}
   flyway:
-    url: ${CORE_DB_URL:jdbc:postgresql://127.0.0.1:5432/inspecto_core?sslmode=require}
+    # Same database as the data source, but migrations run as the owner role.
     user: ${CORE_DB_MIGRATOR_USER:core_migrator}
     password: ${CORE_DB_MIGRATOR_PASSWORD:}
   jpa:
