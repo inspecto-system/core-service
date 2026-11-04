@@ -4,12 +4,19 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 3 * * 1" # weekly CodeQL scan
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   build:
+    if: github.event_name != 'schedule'
     uses: inspecto-system/platform/.github/workflows/java-gradle.yml@ci/reusable-workflows
     permissions:
       contents: write # dependency graph submission
@@ -22,5 +29,6 @@ jobs:
       contents: read
       security-events: write
     with:
-      codeql-language: java-kotlin
+      # CodeQL is the slowest check: on merges to main and weekly, not on every PR commit.
+      codeql-language: ${{ github.event_name != 'pull_request' && 'java-kotlin' || '' }}
       codeql-build-mode: none
