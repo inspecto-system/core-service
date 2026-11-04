@@ -7,11 +7,11 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Real PostgreSQL for integration tests (CODE_QUALITY.md §4: no database mocks). */
 @TestConfiguration(proxyBeanMethods = false)
-class TestcontainersConfiguration {
+public class TestcontainersConfiguration {
 
   @Bean
   @ServiceConnection
-  PostgreSQLContainer postgres() {
+  public PostgreSQLContainer postgres() {
     return new PostgreSQLContainer("postgres:16-alpine");
   }
 }
