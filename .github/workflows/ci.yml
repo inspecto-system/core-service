@@ -17,14 +17,14 @@ permissions:
 jobs:
   build:
     if: github.event_name != 'schedule'
-    uses: inspecto-system/platform/.github/workflows/java-gradle.yml@ci/reusable-workflows
+    uses: inspecto-system/platform/.github/workflows/java-gradle.yml@main
     permissions:
       contents: write # dependency graph submission
     with:
       java-version: "21"
 
   security:
-    uses: inspecto-system/platform/.github/workflows/security.yml@ci/reusable-workflows
+    uses: inspecto-system/platform/.github/workflows/security.yml@main
     permissions:
       contents: read
       security-events: write
