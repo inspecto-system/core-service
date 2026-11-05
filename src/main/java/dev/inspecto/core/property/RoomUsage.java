@@ -9,6 +9,6 @@ import java.util.UUID;
 @FunctionalInterface
 public interface RoomUsage {
 
-  /** Whether an inspection checklist (and, from T-203, a defect) refers to the room. */
-  boolean isUsed(UUID roomId);
+  /** Whether an inspection checklist or a defect refers to the room. */
+  boolean isRoomUsed(UUID roomId);
 }

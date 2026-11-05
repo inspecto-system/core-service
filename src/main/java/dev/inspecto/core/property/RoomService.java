@@ -54,15 +54,17 @@ public class RoomService {
   }
 
   /**
-   * Deletes a room that no inspection refers to.
+   * Deletes a room that no inspection or defect refers to.
    *
-   * @throws ApiException {@code RESOURCE_IN_USE} when the room is part of an inspection
+   * @throws ApiException {@code RESOURCE_IN_USE} when the room is part of an inspection or has
+   *     defects
    */
   @Transactional
   public void delete(UUID roomId, UUID userId) {
     Room room = access.ownedRoom(roomId, userId);
-    if (usage.isUsed(roomId)) {
-      throw new ApiException(ErrorCode.RESOURCE_IN_USE, "The room is used by an inspection");
+    if (usage.isRoomUsed(roomId)) {
+      throw new ApiException(
+          ErrorCode.RESOURCE_IN_USE, "The room is used by inspections or defects");
     }
     rooms.delete(room);
   }

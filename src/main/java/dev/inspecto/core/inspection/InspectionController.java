@@ -7,7 +7,7 @@ import dev.inspecto.core.inspection.InspectionDtos.InspectionPage;
 import dev.inspecto.core.inspection.InspectionDtos.InspectionResponse;
 import dev.inspecto.core.inspection.InspectionDtos.UpdateInspectionRequest;
 import dev.inspecto.core.inspection.InspectionDtos.VersionOnly;
-import dev.inspecto.core.inspection.InspectionService.InspectionUpdate;
+import dev.inspecto.core.inspection.InspectionLifecycleService.InspectionUpdate;
 import dev.inspecto.core.security.CurrentUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -37,10 +37,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class InspectionController {
 
   private final InspectionService inspections;
+  private final InspectionLifecycleService lifecycle;
 
   /** Creates the controller. */
-  public InspectionController(InspectionService inspections) {
+  public InspectionController(InspectionService inspections, InspectionLifecycleService lifecycle) {
     this.inspections = inspections;
+    this.lifecycle = lifecycle;
   }
 
   /** Inspection history of a property. */
@@ -81,7 +83,7 @@ public class InspectionController {
       @Valid @RequestBody UpdateInspectionRequest request) {
     InspectionUpdate update =
         new InspectionUpdate(request::applyTo, request.start(), request.version());
-    return InspectionResponse.of(inspections.update(inspectionId, CurrentUser.id(jwt), update));
+    return InspectionResponse.of(lifecycle.update(inspectionId, CurrentUser.id(jwt), update));
   }
 
   /** Completes the inspection. */
@@ -91,13 +93,13 @@ public class InspectionController {
       @PathVariable UUID inspectionId,
       @Valid @RequestBody VersionOnly request) {
     return InspectionResponse.of(
-        inspections.complete(inspectionId, CurrentUser.id(jwt), request.version()));
+        lifecycle.complete(inspectionId, CurrentUser.id(jwt), request.version()));
   }
 
   /** Deletes a draft inspection. */
   @DeleteMapping("/inspections/{inspectionId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID inspectionId) {
-    inspections.delete(inspectionId, CurrentUser.id(jwt));
+    lifecycle.delete(inspectionId, CurrentUser.id(jwt));
   }
 }

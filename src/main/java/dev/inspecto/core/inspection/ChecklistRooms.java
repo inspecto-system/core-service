@@ -3,6 +3,7 @@ package dev.inspecto.core.inspection;
 import dev.inspecto.core.common.error.ApiException;
 import dev.inspecto.core.common.error.ErrorCode;
 import dev.inspecto.core.common.error.FieldViolation;
+import dev.inspecto.core.common.id.UuidV7;
 import dev.inspecto.core.dictionary.AppLocale;
 import dev.inspecto.core.dictionary.ChecklistTemplate;
 import dev.inspecto.core.dictionary.ChecklistTemplateItem;
@@ -10,9 +11,10 @@ import dev.inspecto.core.dictionary.ChecklistTemplateRepository;
 import dev.inspecto.core.inspection.ChecklistItem.ChecklistItemDraft;
 import dev.inspecto.core.property.Room;
 import dev.inspecto.core.property.RoomRepository;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,41 +33,54 @@ public class ChecklistRooms {
 
   private final RoomRepository rooms;
   private final ChecklistTemplateRepository templates;
+  private final ChecklistItemRepository items;
+  private final Clock clock;
 
   /** Creates the component. */
-  public ChecklistRooms(RoomRepository rooms, ChecklistTemplateRepository templates) {
+  public ChecklistRooms(
+      RoomRepository rooms,
+      ChecklistTemplateRepository templates,
+      ChecklistItemRepository items,
+      Clock clock) {
     this.rooms = rooms;
     this.templates = templates;
+    this.items = items;
+    this.clock = clock;
   }
 
   /**
-   * Items of a new inspection: every item of every selected template, in the order the templates
-   * were given, for every selected room. Titles are copied in the requested language.
+   * Creates the checklist of a new inspection: every item of every selected template, in the order
+   * the templates were given, for every selected room. Titles are copied in the requested language.
    *
    * @throws ApiException {@code VALIDATION_ERROR} when a room is not part of the property or a
    *     template is unknown to the user
    */
-  public List<ChecklistItemDraft> plan(
-      UUID propertyId, UUID userId, ChecklistSelection selection, AppLocale locale) {
-    List<Room> selectedRooms = roomsOf(propertyId, selection.roomIds());
+  public List<ChecklistItem> createChecklist(
+      Inspection inspection, UUID userId, ChecklistSelection selection, AppLocale locale) {
+    List<Room> selectedRooms = roomsOf(inspection.getPropertyId(), selection.roomIds());
     List<ChecklistTemplateItem> templateItems =
         visibleTemplates(userId, selection.templateCodes()).stream()
             .flatMap(template -> template.getItems().stream())
             .toList();
-    List<ChecklistItemDraft> drafts = new ArrayList<>();
+    Instant now = clock.instant();
+    List<ChecklistItem> checklist = new ArrayList<>();
     for (Room room : selectedRooms) {
       for (int sortOrder = 0; sortOrder < templateItems.size(); sortOrder++) {
         ChecklistTemplateItem item = templateItems.get(sortOrder);
-        drafts.add(
-            new ChecklistItemDraft(
-                room.getId(),
-                item.getId(),
-                item.getElementGroup(),
-                item.getTitles().in(locale),
-                sortOrder));
+        checklist.add(
+            new ChecklistItem(
+                UuidV7.generate(clock),
+                inspection.getId(),
+                new ChecklistItemDraft(
+                    room.getId(),
+                    item.getId(),
+                    item.getElementGroup(),
+                    item.getTitles().in(locale),
+                    sortOrder),
+                now));
       }
     }
-    return drafts;
+    return items.saveAll(checklist);
   }
 
   /**
@@ -79,22 +94,6 @@ public class ChecklistRooms {
     if (!belongs) {
       throw invalid("roomId", "UNKNOWN_ID");
     }
-  }
-
-  /** Groups items by room, rooms in display order, items in checklist order. */
-  public List<RoomChecklist> arrange(List<ChecklistItem> items) {
-    Map<UUID, List<ChecklistItem>> byRoom =
-        items.stream()
-            .sorted(
-                Comparator.comparingInt(ChecklistItem::getSortOrder)
-                    .thenComparing(ChecklistItem::getId))
-            .collect(
-                Collectors.groupingBy(
-                    ChecklistItem::getRoomId, LinkedHashMap::new, Collectors.toList()));
-    return rooms.findAllById(byRoom.keySet()).stream()
-        .sorted(DISPLAY_ORDER)
-        .map(room -> new RoomChecklist(room, byRoom.get(room.getId())))
-        .toList();
   }
 
   private List<Room> roomsOf(UUID propertyId, List<UUID> roomIds) {
@@ -139,15 +138,6 @@ public class ChecklistRooms {
     public ChecklistSelection {
       roomIds = List.copyOf(roomIds);
       templateCodes = List.copyOf(templateCodes);
-    }
-  }
-
-  /** Room of an inspection with its checklist. */
-  public record RoomChecklist(Room room, List<ChecklistItem> items) {
-
-    /** Copies the item list. */
-    public RoomChecklist {
-      items = List.copyOf(items);
     }
   }
 }

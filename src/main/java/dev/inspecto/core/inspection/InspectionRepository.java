@@ -2,6 +2,7 @@ package dev.inspecto.core.inspection;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -42,6 +43,8 @@ public interface InspectionRepository extends JpaRepository<Inspection, UUID> {
   Optional<Inspection> findForShare(@Param("id") UUID id);
 
   Page<Inspection> findByPropertyId(UUID propertyId, Pageable pageable);
+
+  List<Inspection> findAllByPropertyId(UUID propertyId);
 
   long countByPropertyId(UUID propertyId);
 

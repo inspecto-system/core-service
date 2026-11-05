@@ -17,11 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefectCategoryService {
 
   private final DefectCategoryRepository categories;
+  private final CategoryUsage usage;
   private final Clock clock;
 
   /** Creates the service. */
-  public DefectCategoryService(DefectCategoryRepository categories, Clock clock) {
+  public DefectCategoryService(
+      DefectCategoryRepository categories, CategoryUsage usage, Clock clock) {
     this.categories = categories;
+    this.usage = usage;
     this.clock = clock;
   }
 
@@ -55,12 +58,17 @@ public class DefectCategoryService {
   }
 
   /**
-   * Deletes an own category. Categories used by defects cannot be deleted ({@code 409
-   * RESOURCE_IN_USE}); defects are introduced in T-203, which adds that check here.
+   * Deletes an own category that no defect has; a used category can be deactivated instead.
+   *
+   * @throws ApiException {@code RESOURCE_IN_USE} when a defect has the category
    */
   @Transactional
   public void deleteOwn(UUID categoryId, UUID userId) {
-    categories.delete(own(categoryId, userId));
+    DefectCategory category = own(categoryId, userId);
+    if (usage.isCategoryUsed(categoryId)) {
+      throw new ApiException(ErrorCode.RESOURCE_IN_USE, "The category is used by defects");
+    }
+    categories.delete(category);
   }
 
   /**

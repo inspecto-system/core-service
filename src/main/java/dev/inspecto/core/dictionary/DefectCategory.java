@@ -95,6 +95,11 @@ public class DefectCategory {
     return ownerId == null;
   }
 
+  /** Whether the user may see the category: system categories are visible to everyone. */
+  public boolean isVisibleTo(UUID userId) {
+    return isSystem() || ownerId.equals(userId);
+  }
+
   public UUID getId() {
     return id;
   }
