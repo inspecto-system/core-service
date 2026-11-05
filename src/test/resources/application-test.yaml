@@ -1,0 +1,6 @@
+# Integration tests run against a Testcontainers PostgreSQL (connection details come from
+# @ServiceConnection). Empty Flyway credentials make Flyway reuse that data source.
+spring:
+  flyway:
+    user: ""
+    password: ""

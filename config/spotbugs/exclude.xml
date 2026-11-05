@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Exclusions must be narrow and justified (CODE_QUALITY.md §1).
+  EI_EXPOSE_REP/EI_EXPOSE_REP2: Spring injects shared, immutable-by-contract beans through
+  constructors; copying them is meaningless.
+-->
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="~dev\.inspecto\.core\..*(Controller|Service|Repository|Config|Configuration|Properties)"/>
+    </Match>
+</FindBugsFilter>
