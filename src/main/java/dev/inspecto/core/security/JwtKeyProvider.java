@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 
 /** Holds the RSA key pair that signs access tokens (ADR-007). */
 @Component
-public class JwtKeyProvider {
+public final class JwtKeyProvider {
 
   private static final Logger LOG = LoggerFactory.getLogger(JwtKeyProvider.class);
   private static final int GENERATED_KEY_SIZE = 2048;

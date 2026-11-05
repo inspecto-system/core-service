@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import dev.inspecto.core.TestcontainersConfiguration;
 import jakarta.servlet.http.Cookie;
+import java.io.UnsupportedEncodingException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -308,12 +309,12 @@ class AuthFlowIntegrationTest {
     return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
   }
 
-  private static String bearer(MvcResult loginResult) throws Exception {
+  private static String bearer(MvcResult loginResult) throws UnsupportedEncodingException {
     String body = loginResult.getResponse().getContentAsString();
     return "Bearer " + JsonPath.read(body, "$.accessToken");
   }
 
-  private static String refreshTokenOf(MvcResult result) throws Exception {
+  private static String refreshTokenOf(MvcResult result) throws UnsupportedEncodingException {
     return JsonPath.read(result.getResponse().getContentAsString(), "$.refreshToken");
   }
 

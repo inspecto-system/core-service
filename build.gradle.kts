@@ -43,6 +43,10 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
+    // @SuppressFBWarnings for narrow, justified SpotBugs suppressions (CODE_QUALITY.md §1).
+    compileOnly("com.github.spotbugs:spotbugs-annotations:4.10.5")
+    testCompileOnly("com.github.spotbugs:spotbugs-annotations:4.10.5")
+
     spotbugsPlugins("com.h3xstream.findsecbugs:findsecbugs-plugin:1.14.0")
 }
 

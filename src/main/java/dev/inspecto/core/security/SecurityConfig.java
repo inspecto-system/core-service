@@ -3,6 +3,7 @@ package dev.inspecto.core.security;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -45,6 +46,12 @@ public class SecurityConfig {
   @Bean
   @SuppressWarnings(
       "PMD.SignatureDeclareThrowsException") // HttpSecurity.build() declares Exception
+  @SuppressFBWarnings(
+      value = {"SPRING_CSRF_PROTECTION_DISABLED", "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION"},
+      justification =
+          "Stateless bearer-token API: no session or auth cookies, the SameSite=Strict refresh"
+              + " cookie requires X-CSRF-Protection (SECURITY.md §4); HttpSecurity.build()"
+              + " declares Exception")
   SecurityFilterChain apiSecurity(
       HttpSecurity http, @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver)
       throws Exception {

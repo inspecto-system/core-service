@@ -3,10 +3,17 @@
   Exclusions must be narrow and justified (CODE_QUALITY.md §1).
   EI_EXPOSE_REP/EI_EXPOSE_REP2: Spring injects shared, immutable-by-contract beans through
   constructors; copying them is meaningless.
+  SPRING_ENDPOINT: find-sec-bugs marks every controller as "an endpoint to review". It is an
+  inventory note, not a defect; every endpoint is covered by authentication and access tests
+  (CODE_QUALITY.md §4, TESTING.md SEC-01).
 -->
 <FindBugsFilter>
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="~dev\.inspecto\.core\..*(Controller|Service|Repository|Config|Configuration|Properties)"/>
+    </Match>
+    <Match>
+        <Bug pattern="SPRING_ENDPOINT"/>
+        <Class name="~dev\.inspecto\.core\..*Controller"/>
     </Match>
 </FindBugsFilter>

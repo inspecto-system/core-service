@@ -1,5 +1,6 @@
 package dev.inspecto.core.common.web;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,6 +31,11 @@ public class RequestIdFilter extends OncePerRequestFilter {
   }
 
   @Override
+  @SuppressFBWarnings(
+      value = {"HRS_REQUEST_PARAMETER_TO_HTTP_HEADER", "SERVLET_HEADER"},
+      justification =
+          "The client value is echoed only after matching [A-Za-z0-9-]{1,64}, which excludes"
+              + " CR/LF; otherwise a new UUID is used")
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {

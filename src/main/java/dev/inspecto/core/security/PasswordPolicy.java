@@ -9,9 +9,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,7 @@ import org.springframework.stereotype.Component;
  * password is checked against common passwords and the user's own email.
  */
 @Component
-public class PasswordPolicy {
+public final class PasswordPolicy {
 
   private static final String COMMON_PASSWORDS = "security/common-passwords.txt";
 
@@ -39,9 +40,9 @@ public class PasswordPolicy {
    * @throws ApiException {@code VALIDATION_ERROR} with code {@code WEAK_PASSWORD}
    */
   public void check(String password, String email, String field) {
-    String normalized = password.toLowerCase(Locale.ROOT);
-    boolean common = commonPasswords.contains(normalized);
-    boolean sameAsEmail = email != null && normalized.equals(email.toLowerCase(Locale.ROOT));
+    boolean common = commonPasswords.contains(password);
+    boolean sameAsEmail =
+        email != null && String.CASE_INSENSITIVE_ORDER.compare(password, email) == 0;
     if (common || sameAsEmail) {
       List<FieldViolation> violations = List.of(new FieldViolation(field, "WEAK_PASSWORD"));
       throw new ApiException(ErrorCode.VALIDATION_ERROR, "Password is too weak", violations);
@@ -56,8 +57,10 @@ public class PasswordPolicy {
           .lines()
           .map(String::trim)
           .filter(line -> !line.isEmpty() && !line.startsWith("#"))
-          .map(line -> line.toLowerCase(Locale.ROOT))
-          .collect(Collectors.toUnmodifiableSet());
+          .collect(
+              Collectors.collectingAndThen(
+                  Collectors.toCollection(() -> new TreeSet<>(String.CASE_INSENSITIVE_ORDER)),
+                  Collections::unmodifiableSortedSet));
     } catch (IOException e) {
       throw new UncheckedIOException("Cannot load " + COMMON_PASSWORDS, e);
     }

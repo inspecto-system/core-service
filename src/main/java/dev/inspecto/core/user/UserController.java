@@ -4,6 +4,7 @@ import dev.inspecto.core.user.UserDtos.ChangePasswordRequest;
 import dev.inspecto.core.user.UserDtos.UpdateUserRequest;
 import dev.inspecto.core.user.UserDtos.UserResponse;
 import jakarta.validation.Valid;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -52,6 +53,7 @@ public class UserController {
   }
 
   private static UUID userId(Jwt jwt) {
-    return UUID.fromString(jwt.getSubject());
+    // The decoder accepts only tokens signed by core, and core always sets the subject.
+    return UUID.fromString(Objects.requireNonNull(jwt.getSubject(), "Access token has no subject"));
   }
 }

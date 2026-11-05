@@ -3,6 +3,7 @@ package dev.inspecto.core.security;
 import dev.inspecto.core.common.error.ApiException;
 import dev.inspecto.core.common.error.ErrorCode;
 import dev.inspecto.core.common.id.UuidV7;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -53,6 +54,9 @@ public class RefreshTokenService {
    * @throws ApiException {@code UNAUTHENTICATED} when the token is unknown, expired or reused
    */
   @Transactional(noRollbackFor = ApiException.class)
+  @SuppressFBWarnings(
+      value = "CRLF_INJECTION_LOGS",
+      justification = "The only logged value is a UUID, which cannot contain CR/LF")
   public Rotation rotate(String rawToken, String userAgent) {
     Instant now = clock.instant();
     RefreshToken current = repository.findByTokenHash(hash(rawToken)).orElseThrow(this::invalid);

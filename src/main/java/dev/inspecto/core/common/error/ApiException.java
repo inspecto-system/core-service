@@ -1,5 +1,6 @@
 package dev.inspecto.core.common.error;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.List;
 
 /** Business error rendered as RFC 9457 problem details with a machine-readable code. */
@@ -8,6 +9,12 @@ public class ApiException extends RuntimeException {
   private static final long serialVersionUID = 1L;
 
   private final ErrorCode code;
+
+  @SuppressFBWarnings(
+      value = "SE_TRANSIENT_FIELD_NOT_RESTORED",
+      justification =
+          "Exceptions are rendered to problem details in-process and never serialized"
+              + " (no RMI, no session replication)")
   private final transient List<FieldViolation> violations;
 
   /** Creates an error without field violations. */
