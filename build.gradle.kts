@@ -129,6 +129,8 @@ val criticalPackages =
         "dev.inspecto.core.security*",
         // Resource access checks (T-102) live with the property aggregate.
         "dev.inspecto.core.property*",
+        // Inspection status rules and checklist access (T-201, T-202).
+        "dev.inspecto.core.inspection*",
         "dev.inspecto.core.comparison*",
         "dev.inspecto.core.*.domain*",
     )

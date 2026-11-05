@@ -5,7 +5,6 @@ import dev.inspecto.core.property.PropertyDtos.PropertyDetailsResponse;
 import dev.inspecto.core.property.PropertyDtos.PropertyPage;
 import dev.inspecto.core.property.PropertyDtos.PropertyResponse;
 import dev.inspecto.core.property.PropertyDtos.UpdatePropertyRequest;
-import dev.inspecto.core.property.PropertyService.PropertyCard;
 import dev.inspecto.core.property.PropertyService.PropertyUpdate;
 import dev.inspecto.core.security.CurrentUser;
 import jakarta.validation.Valid;
@@ -35,10 +34,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class PropertyController {
 
   private final PropertyService properties;
+  private final PropertyCards cards;
 
   /** Creates the controller. */
-  public PropertyController(PropertyService properties) {
+  public PropertyController(PropertyService properties, PropertyCards cards) {
     this.properties = properties;
+    this.cards = cards;
   }
 
   /** Own properties. */
@@ -64,8 +65,7 @@ public class PropertyController {
   @GetMapping("/{propertyId}")
   public PropertyDetailsResponse get(
       @AuthenticationPrincipal Jwt jwt, @PathVariable UUID propertyId) {
-    PropertyCard card = properties.get(propertyId, CurrentUser.id(jwt));
-    return PropertyDetailsResponse.of(card.property(), card.rooms());
+    return PropertyDetailsResponse.of(cards.get(propertyId, CurrentUser.id(jwt)));
   }
 
   /** Updates a property. */
