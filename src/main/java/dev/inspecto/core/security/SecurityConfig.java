@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -35,7 +36,7 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 /** Stateless bearer-token security of the API (ADR-007, ADR-009, SECURITY.md §2–3). */
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties(SecurityProperties.class)
+@EnableConfigurationProperties({SecurityProperties.class, ServiceClientProperties.class})
 public class SecurityConfig {
 
   /** Public endpoints of the API; everything else requires a valid access token. */
@@ -43,7 +44,52 @@ public class SecurityConfig {
     "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh"
   };
 
+  /** Service-to-service endpoints; not routed by nginx (ADR-013). */
+  private static final String INTERNAL = "/internal/**";
+
+  /**
+   * {@code /internal/**} accepts only service tokens ({@code aud=inspecto-internal}); user access
+   * tokens fail the audience check here, and service tokens fail it on the public API (SECURITY.md
+   * §8).
+   */
   @Bean
+  @Order(1)
+  @SuppressWarnings(
+      "PMD.SignatureDeclareThrowsException") // HttpSecurity.build() declares Exception
+  @SuppressFBWarnings(
+      value = {"SPRING_CSRF_PROTECTION_DISABLED", "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION"},
+      justification =
+          "Service-to-service calls with bearer tokens and no cookies; HttpSecurity.build()"
+              + " declares Exception")
+  SecurityFilterChain internalSecurity(
+      HttpSecurity http,
+      @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver,
+      JwtKeyProvider keys,
+      SecurityProperties security,
+      ServiceClientProperties clients)
+      throws Exception {
+    ProblemSecurityHandler problems = new ProblemSecurityHandler(resolver);
+    JwtDecoder serviceTokens = decoder(keys, security.issuer(), clients.audience());
+    http.securityMatcher(INTERNAL)
+        .csrf(csrf -> csrf.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth ->
+            auth.requestMatchers(HttpMethod.POST, "/internal/v1/auth/service-token")
+                .permitAll()
+                .anyRequest()
+                .authenticated())
+        .oauth2ResourceServer(oauth ->
+            oauth
+                .jwt(jwt -> jwt.decoder(serviceTokens))
+                .authenticationEntryPoint(problems)
+                .accessDeniedHandler(problems))
+        .exceptionHandling(
+            ex -> ex.authenticationEntryPoint(problems).accessDeniedHandler(problems));
+    return http.build();
+  }
+
+  @Bean
+  @Order(2)
   @SuppressWarnings(
       "PMD.SignatureDeclareThrowsException") // HttpSecurity.build() declares Exception
   @SuppressFBWarnings(
@@ -86,18 +132,24 @@ public class SecurityConfig {
         new ImmutableJWKSet<SecurityContext>(new JWKSet(keys.signingKey())));
   }
 
+  /** Decoder of user access tokens, used by the public API. */
   @Bean
   JwtDecoder jwtDecoder(JwtKeyProvider keys, SecurityProperties properties) {
+    return decoder(keys, properties.issuer(), properties.audience());
+  }
+
+  /** RS256-only decoder that checks the issuer, the lifetime and the given audience. */
+  static JwtDecoder decoder(JwtKeyProvider keys, String issuer, String expectedAudience) {
     NimbusJwtDecoder decoder =
         NimbusJwtDecoder.withPublicKey(keys.publicKey())
             .signatureAlgorithm(SignatureAlgorithm.RS256)
             .build();
     OAuth2TokenValidator<Jwt> audience =
         new JwtClaimValidator<List<String>>(
-            JwtClaimNames.AUD, aud -> aud != null && aud.contains(properties.audience()));
+            JwtClaimNames.AUD, aud -> aud != null && aud.contains(expectedAudience));
     decoder.setJwtValidator(
         new DelegatingOAuth2TokenValidator<>(
-            JwtValidators.createDefaultWithIssuer(properties.issuer()), audience));
+            JwtValidators.createDefaultWithIssuer(issuer), audience));
     return decoder;
   }
 

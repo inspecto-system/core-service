@@ -60,3 +60,19 @@ inspecto:
     max-failed-logins: 5
     lock-duration: 15m
     cookie-secure: ${CORE_COOKIE_SECURE:true}
+  service-clients:
+    audience: inspecto-internal
+    token-ttl: 15m
+    # Secrets of at least 32 characters; a client without a secret cannot obtain service tokens.
+    secrets:
+      "[media-service]": ${CORE_MEDIA_CLIENT_SECRET:}
+      "[report-service]": ${CORE_REPORT_CLIENT_SECRET:}
+      "[ml-service]": ${CORE_ML_CLIENT_SECRET:}
+
+logging:
+  structured:
+    # JSON logs (CODE_QUALITY.md §1) with secrets masked (SECURITY.md §5).
+    format:
+      console: ecs
+    json:
+      customizer: dev.inspecto.core.common.logging.SensitiveDataMasking
