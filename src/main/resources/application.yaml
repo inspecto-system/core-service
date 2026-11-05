@@ -47,3 +47,16 @@ management:
       enabled: true
     readinessstate:
       enabled: true
+
+inspecto:
+  security:
+    issuer: inspecto-core
+    audience: inspecto-api
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+    key-id: ${CORE_JWT_KEY_ID:core-1}
+    # PKCS#8 PEM; when empty an ephemeral key is generated (development only).
+    private-key: ${CORE_JWT_PRIVATE_KEY:}
+    max-failed-logins: 5
+    lock-duration: 15m
+    cookie-secure: ${CORE_COOKIE_SECURE:true}
