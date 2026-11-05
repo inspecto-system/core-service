@@ -1,5 +1,8 @@
 package dev.inspecto.core.property;
 
+import dev.inspecto.core.common.error.ApiException;
+import dev.inspecto.core.common.error.ErrorCode;
+import dev.inspecto.core.common.error.OptimisticVersion;
 import dev.inspecto.core.common.id.UuidV7;
 import java.time.Clock;
 import java.util.List;
@@ -13,12 +16,14 @@ public class RoomService {
 
   private final RoomRepository rooms;
   private final PropertyAccess access;
+  private final RoomUsage usage;
   private final Clock clock;
 
   /** Creates the service. */
-  public RoomService(RoomRepository rooms, PropertyAccess access, Clock clock) {
+  public RoomService(RoomRepository rooms, PropertyAccess access, RoomUsage usage, Clock clock) {
     this.rooms = rooms;
     this.access = access;
+    this.usage = usage;
     this.clock = clock;
   }
 
@@ -43,17 +48,22 @@ public class RoomService {
   @Transactional
   public Room update(UUID roomId, UUID userId, RoomFields change, long expectedVersion) {
     Room room = access.ownedRoom(roomId, userId);
-    PropertyService.requireVersion(room.getVersion(), expectedVersion);
+    OptimisticVersion.require(room.getVersion(), expectedVersion);
     room.update(change, clock.instant());
     return rooms.saveAndFlush(room);
   }
 
   /**
-   * Deletes a room. Rooms with defects cannot be deleted ({@code 409}); defects are introduced in
-   * T-203, which adds that check here.
+   * Deletes a room that no inspection refers to.
+   *
+   * @throws ApiException {@code RESOURCE_IN_USE} when the room is part of an inspection
    */
   @Transactional
   public void delete(UUID roomId, UUID userId) {
-    rooms.delete(access.ownedRoom(roomId, userId));
+    Room room = access.ownedRoom(roomId, userId);
+    if (usage.isUsed(roomId)) {
+      throw new ApiException(ErrorCode.RESOURCE_IN_USE, "The room is used by an inspection");
+    }
+    rooms.delete(room);
   }
 }

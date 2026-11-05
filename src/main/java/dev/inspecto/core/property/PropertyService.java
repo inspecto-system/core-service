@@ -1,12 +1,11 @@
 package dev.inspecto.core.property;
 
 import dev.inspecto.core.common.error.ApiException;
-import dev.inspecto.core.common.error.ErrorCode;
+import dev.inspecto.core.common.error.OptimisticVersion;
 import dev.inspecto.core.common.id.UuidV7;
 import dev.inspecto.core.outbox.OutboxEventType;
 import dev.inspecto.core.outbox.OutboxService;
 import java.time.Clock;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -23,20 +22,14 @@ public class PropertyService {
       Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 
   private final PropertyRepository properties;
-  private final RoomRepository rooms;
   private final PropertyAccess access;
   private final OutboxService outbox;
   private final Clock clock;
 
   /** Creates the service. */
   public PropertyService(
-      PropertyRepository properties,
-      RoomRepository rooms,
-      PropertyAccess access,
-      OutboxService outbox,
-      Clock clock) {
+      PropertyRepository properties, PropertyAccess access, OutboxService outbox, Clock clock) {
     this.properties = properties;
-    this.rooms = rooms;
     this.access = access;
     this.outbox = outbox;
     this.clock = clock;
@@ -56,13 +49,6 @@ public class PropertyService {
     return properties.save(property);
   }
 
-  /** Property card data. */
-  @Transactional(readOnly = true)
-  public PropertyCard get(UUID propertyId, UUID userId) {
-    Property property = access.ownedProperty(propertyId, userId);
-    return new PropertyCard(property, rooms.findByPropertyIdOrderBySortOrderAscIdAsc(propertyId));
-  }
-
   /**
    * Updates the descriptive fields.
    *
@@ -71,7 +57,7 @@ public class PropertyService {
   @Transactional
   public Property update(UUID propertyId, UUID userId, PropertyUpdate update) {
     Property property = access.ownedProperty(propertyId, userId);
-    requireVersion(property.getVersion(), update.expectedVersion());
+    OptimisticVersion.require(property.getVersion(), update.expectedVersion());
     property.apply(update.fields().apply(property.fields()), clock.instant());
     return properties.saveAndFlush(property);
   }
@@ -104,12 +90,6 @@ public class PropertyService {
         OutboxEventType.DELETE_PROPERTY_FILES, Map.of("propertyId", propertyId.toString()));
   }
 
-  static void requireVersion(long current, long expected) {
-    if (current != expected) {
-      throw new ApiException(ErrorCode.VERSION_CONFLICT, "The resource was changed meanwhile");
-    }
-  }
-
   /** {@code LIKE} pattern matching any value that contains the query, case-insensitively. */
   static String likePattern(String query) {
     if (query == null || query.isBlank()) {
@@ -117,15 +97,6 @@ public class PropertyService {
     }
     String escaped = query.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     return "%" + escaped + "%";
-  }
-
-  /** Property with its rooms ordered for display. */
-  public record PropertyCard(Property property, List<Room> rooms) {
-
-    /** Copies the room list. */
-    public PropertyCard {
-      rooms = List.copyOf(rooms);
-    }
   }
 
   /** Changes to apply and the version the client based them on. */

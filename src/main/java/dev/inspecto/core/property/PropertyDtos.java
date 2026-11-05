@@ -157,10 +157,7 @@ public final class PropertyDtos {
     }
   }
 
-  /**
-   * Property card. Inspections and defects are introduced in T-201 and T-203; until then a property
-   * has none, so the counters are zero.
-   */
+  /** Property card. */
   public record PropertyDetailsResponse(
       UUID id,
       String name,
@@ -183,9 +180,10 @@ public final class PropertyDtos {
       rooms = List.copyOf(rooms);
     }
 
-    /** Maps a property and its rooms to the card. */
-    public static PropertyDetailsResponse of(Property property, List<Room> rooms) {
-      PropertyResponse base = PropertyResponse.of(property);
+    /** Maps a property, its rooms and counters to the card. */
+    public static PropertyDetailsResponse of(PropertyCards.PropertyCard card) {
+      PropertyResponse base = PropertyResponse.of(card.property());
+      PropertyActivity activity = card.activity();
       return new PropertyDetailsResponse(
           base.id(),
           base.name(),
@@ -198,10 +196,10 @@ public final class PropertyDtos {
           base.createdAt(),
           base.updatedAt(),
           base.version(),
-          rooms.stream().map(RoomResponse::of).toList(),
-          0,
-          0,
-          null);
+          card.rooms().stream().map(RoomResponse::of).toList(),
+          activity.inspectionCount(),
+          activity.openDefectCount(),
+          activity.lastInspectionAt());
     }
   }
 
