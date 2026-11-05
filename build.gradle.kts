@@ -28,15 +28,24 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+    // Argon2 password hashing in Spring Security needs Bouncy Castle.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.81")
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // @SuppressFBWarnings for narrow, justified SpotBugs suppressions (CODE_QUALITY.md §1).
+    compileOnly("com.github.spotbugs:spotbugs-annotations:4.10.5")
+    testCompileOnly("com.github.spotbugs:spotbugs-annotations:4.10.5")
 
     spotbugsPlugins("com.h3xstream.findsecbugs:findsecbugs-plugin:1.14.0")
 }
