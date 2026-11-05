@@ -12,6 +12,11 @@
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="~dev\.inspecto\.core\..*(Controller|Service|Repository|Config|Configuration|Properties)"/>
     </Match>
+    <!-- Test helper that acts through the MockMvc of the test's Spring context, which it must share. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="dev.inspecto.core.support.Fixtures"/>
+    </Match>
     <Match>
         <Bug pattern="SPRING_ENDPOINT"/>
         <Class name="~dev\.inspecto\.core\..*Controller"/>

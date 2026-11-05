@@ -3,9 +3,11 @@ package dev.inspecto.core.inspection;
 import dev.inspecto.core.dictionary.ElementGroup;
 import dev.inspecto.core.inspection.ChecklistItem.ChecklistEntry;
 import dev.inspecto.core.inspection.ChecklistRooms.ChecklistSelection;
-import dev.inspecto.core.inspection.ChecklistRooms.RoomChecklist;
-import dev.inspecto.core.inspection.InspectionService.InspectionView;
+import dev.inspecto.core.inspection.DefectDtos.ObservationWithDefectResponse;
 import dev.inspecto.core.inspection.InspectionService.NewInspection;
+import dev.inspecto.core.inspection.InspectionViews.InspectionSummary;
+import dev.inspecto.core.inspection.InspectionViews.InspectionView;
+import dev.inspecto.core.inspection.InspectionViews.RoomChecklist;
 import dev.inspecto.core.property.PropertyDtos.RoomResponse;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -148,10 +150,7 @@ public final class InspectionDtos {
     }
   }
 
-  /**
-   * Inspection in the history of a property. Defects are introduced in T-203; until then an
-   * inspection has none, so the counters are zero.
-   */
+  /** Inspection in the history of a property with its defect counters. */
   public record InspectionSummaryResponse(
       UUID id,
       UUID propertyId,
@@ -168,8 +167,8 @@ public final class InspectionDtos {
       int newDefectCount) {
 
     /** Maps an entity to the response. */
-    public static InspectionSummaryResponse of(Inspection inspection) {
-      InspectionResponse base = InspectionResponse.of(inspection);
+    public static InspectionSummaryResponse of(InspectionSummary summary) {
+      InspectionResponse base = InspectionResponse.of(summary.inspection());
       return new InspectionSummaryResponse(
           base.id(),
           base.propertyId(),
@@ -182,8 +181,8 @@ public final class InspectionDtos {
           base.createdAt(),
           base.updatedAt(),
           base.version(),
-          0,
-          0);
+          summary.defectCount(),
+          summary.newDefectCount());
     }
   }
 
@@ -197,7 +196,7 @@ public final class InspectionDtos {
     }
 
     /** Maps a Spring Data page. */
-    public static InspectionPage of(Page<Inspection> page) {
+    public static InspectionPage of(Page<InspectionSummary> page) {
       return new InspectionPage(
           page.map(InspectionSummaryResponse::of).getContent(),
           page.getNumber(),
@@ -245,12 +244,11 @@ public final class InspectionDtos {
     }
   }
 
-  /**
-   * Room of an inspection with its checklist and observations. Observations are introduced in
-   * T-203; until then the list is always empty.
-   */
+  /** Room of an inspection with its checklist and the defects observed there. */
   public record InspectionRoomResponse(
-      RoomResponse room, List<ChecklistItemResponse> checklist, List<Object> observations) {
+      RoomResponse room,
+      List<ChecklistItemResponse> checklist,
+      List<ObservationWithDefectResponse> observations) {
 
     /** Copies the lists. */
     public InspectionRoomResponse {
@@ -263,7 +261,7 @@ public final class InspectionDtos {
       return new InspectionRoomResponse(
           RoomResponse.of(roomChecklist.room()),
           roomChecklist.items().stream().map(ChecklistItemResponse::of).toList(),
-          List.of());
+          roomChecklist.observations().stream().map(ObservationWithDefectResponse::of).toList());
     }
   }
 

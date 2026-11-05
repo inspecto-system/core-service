@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChecklistService {
 
   private final InspectionAccess access;
-  private final InspectionRepository inspections;
   private final ChecklistItemRepository items;
   private final ChecklistRooms checklistRooms;
   private final Clock clock;
@@ -28,12 +27,10 @@ public class ChecklistService {
   /** Creates the service. */
   public ChecklistService(
       InspectionAccess access,
-      InspectionRepository inspections,
       ChecklistItemRepository items,
       ChecklistRooms checklistRooms,
       Clock clock) {
     this.access = access;
-    this.inspections = inspections;
     this.items = items;
     this.checklistRooms = checklistRooms;
     this.clock = clock;
@@ -66,10 +63,7 @@ public class ChecklistService {
   @Transactional
   public ChecklistItem update(UUID itemId, UUID userId, ChecklistUpdate update) {
     ChecklistItem item = access.ownedChecklistItem(itemId, userId);
-    inspections
-        .findForShare(item.getInspectionId())
-        .orElseThrow(() -> InspectionAccess.notFound("Inspection not found"))
-        .requireNotCompleted();
+    access.inspectionForShare(item.getInspectionId()).requireNotCompleted();
     OptimisticVersion.require(item.getVersion(), update.expectedVersion());
     item.record(update.entry().apply(item.entry()), clock.instant());
     return items.saveAndFlush(item);

@@ -16,13 +16,21 @@ public class InspectionAccess {
   private final PropertyAccess properties;
   private final InspectionRepository inspections;
   private final ChecklistItemRepository items;
+  private final DefectRepository defects;
+  private final ObservationRepository observations;
 
   /** Creates the component. */
   public InspectionAccess(
-      PropertyAccess properties, InspectionRepository inspections, ChecklistItemRepository items) {
+      PropertyAccess properties,
+      InspectionRepository inspections,
+      ChecklistItemRepository items,
+      DefectRepository defects,
+      ObservationRepository observations) {
     this.properties = properties;
     this.inspections = inspections;
     this.items = items;
+    this.defects = defects;
+    this.observations = observations;
   }
 
   /**
@@ -62,6 +70,36 @@ public class InspectionAccess {
    */
   public ChecklistItem ownedChecklistItem(UUID itemId, UUID userId) {
     return items.findOwned(itemId, userId).orElseThrow(() -> notFound("Checklist item not found"));
+  }
+
+  /**
+   * Returns the defect if the user owns its property.
+   *
+   * @throws ApiException {@code NOT_FOUND} when the defect does not exist or is someone else's
+   */
+  public Defect ownedDefect(UUID defectId, UUID userId) {
+    return defects.findOwned(defectId, userId).orElseThrow(() -> notFound("Defect not found"));
+  }
+
+  /**
+   * Returns the observation if the user owns the property of its inspection.
+   *
+   * @throws ApiException {@code NOT_FOUND} when the observation does not exist or is someone else's
+   */
+  public DefectObservation ownedObservation(UUID observationId, UUID userId) {
+    return observations
+        .findOwned(observationId, userId)
+        .orElseThrow(() -> notFound("Observation not found"));
+  }
+
+  /**
+   * Inspection of an item the user was already given access to, locked against completion until the
+   * end of the transaction. Must be the first load of the inspection in the transaction.
+   */
+  public Inspection inspectionForShare(UUID inspectionId) {
+    return inspections
+        .findForShare(inspectionId)
+        .orElseThrow(() -> notFound("Inspection not found"));
   }
 
   static ApiException notFound(String detail) {
