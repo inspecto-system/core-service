@@ -127,6 +127,8 @@ tasks.jacocoTestReport {
 val criticalPackages =
     listOf(
         "dev.inspecto.core.security*",
+        // Resource access checks (T-102) live with the property aggregate.
+        "dev.inspecto.core.property*",
         "dev.inspecto.core.comparison*",
         "dev.inspecto.core.*.domain*",
     )
