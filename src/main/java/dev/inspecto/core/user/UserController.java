@@ -1,10 +1,10 @@
 package dev.inspecto.core.user;
 
+import dev.inspecto.core.security.CurrentUser;
 import dev.inspecto.core.user.UserDtos.ChangePasswordRequest;
 import dev.inspecto.core.user.UserDtos.UpdateUserRequest;
 import dev.inspecto.core.user.UserDtos.UserResponse;
 import jakarta.validation.Valid;
-import java.util.Objects;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,14 +32,14 @@ public class UserController {
   /** Current profile. */
   @GetMapping
   public UserResponse get(@AuthenticationPrincipal Jwt jwt) {
-    return UserResponse.of(users.get(userId(jwt)));
+    return UserResponse.of(users.get(CurrentUser.id(jwt)));
   }
 
   /** Updates the profile. */
   @PatchMapping
   public UserResponse update(
       @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateUserRequest request) {
-    UUID id = userId(jwt);
+    UUID id = CurrentUser.id(jwt);
     return UserResponse.of(
         users.update(id, request.fullName(), request.locale(), request.version()));
   }
@@ -49,11 +49,6 @@ public class UserController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void changePassword(
       @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ChangePasswordRequest request) {
-    users.changePassword(userId(jwt), request.currentPassword(), request.newPassword());
-  }
-
-  private static UUID userId(Jwt jwt) {
-    // The decoder accepts only tokens signed by core, and core always sets the subject.
-    return UUID.fromString(Objects.requireNonNull(jwt.getSubject(), "Access token has no subject"));
+    users.changePassword(CurrentUser.id(jwt), request.currentPassword(), request.newPassword());
   }
 }

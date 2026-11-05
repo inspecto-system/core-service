@@ -16,6 +16,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -29,17 +30,24 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
   private static final Logger LOG = LoggerFactory.getLogger(ApiExceptionHandler.class);
   private static final String TYPE_BASE = "https://inspecto.dev/problems/";
 
+  private static final String NOT_BLANK = "NOT_BLANK";
+  private static final String INVALID_FORMAT = "INVALID_FORMAT";
+  private static final String OUT_OF_RANGE = "OUT_OF_RANGE";
+
   /** Bean Validation constraint name → field error code of the API. */
   private static final Map<String, String> CONSTRAINT_CODES =
-      Map.of(
-          "NotBlank", "NOT_BLANK",
-          "NotNull", "NOT_BLANK",
-          "NotEmpty", "NOT_BLANK",
-          "Size", "INVALID_LENGTH",
-          "Email", "INVALID_FORMAT",
-          "Pattern", "INVALID_FORMAT",
-          "Min", "OUT_OF_RANGE",
-          "Max", "OUT_OF_RANGE");
+      Map.ofEntries(
+          Map.entry("NotBlank", NOT_BLANK),
+          Map.entry("NotNull", NOT_BLANK),
+          Map.entry("NotEmpty", NOT_BLANK),
+          Map.entry("Size", "INVALID_LENGTH"),
+          Map.entry("Email", INVALID_FORMAT),
+          Map.entry("Pattern", INVALID_FORMAT),
+          Map.entry("Digits", INVALID_FORMAT),
+          Map.entry("Min", OUT_OF_RANGE),
+          Map.entry("Max", OUT_OF_RANGE),
+          Map.entry("DecimalMin", OUT_OF_RANGE),
+          Map.entry("DecimalMax", OUT_OF_RANGE));
 
   /** Builds problem details for the given error code. */
   public static ProblemDetail problem(ErrorCode code, String detail) {
@@ -104,10 +112,13 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
       HttpHeaders headers,
       HttpStatusCode statusCode,
       WebRequest request) {
-    if (body instanceof ProblemDetail problem) {
+    // Some framework handlers (for example method validation of query parameters) pass no body and
+    // let the base class take it from the exception; enrich that body as well.
+    Object effective = body == null && ex instanceof ErrorResponse error ? error.getBody() : body;
+    if (effective instanceof ProblemDetail problem) {
       enrich(problem, codeFor(statusCode));
     }
-    return super.handleExceptionInternal(ex, body, headers, statusCode, request);
+    return super.handleExceptionInternal(ex, effective, headers, statusCode, request);
   }
 
   private static void enrich(ProblemDetail problem, ErrorCode code) {
