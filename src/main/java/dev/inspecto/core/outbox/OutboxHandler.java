@@ -34,8 +34,10 @@ public class OutboxHandler {
     // An exhaustive switch expression: a new event type does not compile until it is handled here.
     Runnable job =
         switch (event.getType()) {
-          // Reports of a property are deleted here as well once report-service exists (T-303).
+          // Reports of a property or an account are deleted here as well once report-service exists
+          // (T-401, T-402).
           case DELETE_PROPERTY_FILES -> () -> media.deletePropertyPhotos(id(payload, "propertyId"));
+          case DELETE_USER_FILES -> () -> media.deleteOwnerPhotos(id(payload, "ownerId"));
           case DELETE_PHOTO -> () -> media.deletePhoto(id(payload, "photoId"));
         };
     job.run();

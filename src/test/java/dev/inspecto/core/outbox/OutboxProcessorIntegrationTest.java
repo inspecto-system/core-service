@@ -52,20 +52,28 @@ class OutboxProcessorIntegrationTest {
   }
 
   @Test
-  void shouldDeliverDuePhotoAndPropertyDeletions() {
+  void shouldDeliverDuePhotoPropertyAndAccountDeletions() {
     UUID photo = UUID.randomUUID();
     UUID property = UUID.randomUUID();
+    UUID owner = UUID.randomUUID();
     OutboxEvent single = enqueue(OutboxEventType.DELETE_PHOTO, "{\"photoId\":\"" + photo + "\"}");
     OutboxEvent bulk =
         enqueue(OutboxEventType.DELETE_PROPERTY_FILES, "{\"propertyId\":\"" + property + "\"}");
+    OutboxEvent account =
+        enqueue(OutboxEventType.DELETE_USER_FILES, "{\"ownerId\":\"" + owner + "\"}");
 
-    assertThat(processor.processDue()).isEqualTo(2);
+    assertThat(processor.processDue()).isEqualTo(3);
 
     assertThat(MEDIA.calls())
         .extracting(c -> c.method() + " " + c.path())
         .containsExactlyInAnyOrder(
             "DELETE /internal/v1/photos/" + photo,
-            "DELETE /internal/v1/photos?propertyId=" + property);
+            "DELETE /internal/v1/photos?propertyId=" + property,
+            "DELETE /internal/v1/photos?ownerId=" + owner);
+    assertThat(events.findById(account.getId()))
+        .get()
+        .extracting(OutboxEvent::getStatus)
+        .isEqualTo("DONE");
     assertThat(events.findById(single.getId()))
         .get()
         .extracting(OutboxEvent::getStatus)

@@ -12,7 +12,8 @@ import org.springframework.test.web.servlet.MockMvc;
 /** Registers users through the public API and returns their bearer tokens. */
 public final class ApiUsers {
 
-  private static final String PASSWORD = "Kitchen-Window-Crack-42";
+  /** Password of every test account. */
+  public static final String PASSWORD = "Kitchen-Window-Crack-42";
 
   private ApiUsers() {}
 

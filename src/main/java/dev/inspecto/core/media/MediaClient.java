@@ -124,6 +124,15 @@ public class MediaClient {
     delete("/internal/v1/photos?propertyId={propertyId}", propertyId);
   }
 
+  /**
+   * Deletes all photos of an owner (a deleted account).
+   *
+   * @throws MediaUnavailableException when the photos could not be deleted
+   */
+  public void deleteOwnerPhotos(UUID ownerId) {
+    delete("/internal/v1/photos?ownerId={ownerId}", ownerId);
+  }
+
   private void delete(String path, UUID id) {
     try {
       http.delete()
