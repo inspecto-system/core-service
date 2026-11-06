@@ -45,7 +45,7 @@ public class ObservationService {
    *     inspection is completed
    */
   @Transactional
-  public DefectObservation create(UUID inspectionId, UUID userId, NewObservation request) {
+  public ObservationView create(UUID inspectionId, UUID userId, NewObservation request) {
     Inspection inspection = access.ownedInspectionForShare(inspectionId, userId);
     inspection.requireNotCompleted();
     Defect defect = references.defectOf(inspection.getPropertyId(), request.defectId());
@@ -53,10 +53,11 @@ public class ObservationService {
     Severity severity =
         request.severity() == null ? defect.fields().severity() : request.severity();
     ObservationEntry entry = new ObservationEntry(request.status(), severity, request.comment());
-    return journal.record(
-        defect,
-        new ObservationKey(defect.getId(), inspectionId, userId),
-        new ObservationDraft(request.checklistItemId(), entry));
+    return ObservationView.withoutPhotos(
+        journal.record(
+            defect,
+            new ObservationKey(defect.getId(), inspectionId, userId),
+            new ObservationDraft(request.checklistItemId(), entry)));
   }
 
   /**
@@ -66,11 +67,13 @@ public class ObservationService {
    *     INVALID_STATE_TRANSITION} when the inspection is completed
    */
   @Transactional
-  public DefectObservation update(UUID observationId, UUID userId, ObservationUpdate update) {
+  public ObservationView update(UUID observationId, UUID userId, ObservationUpdate update) {
     DefectObservation observation = access.ownedObservation(observationId, userId);
     access.inspectionForShare(observation.getInspectionId()).requireNotCompleted();
     OptimisticVersion.require(observation.getVersion(), update.expectedVersion());
-    return journal.change(observation, update.entry().apply(observation.entry()), userId);
+    DefectObservation changed =
+        journal.change(observation, update.entry().apply(observation.entry()), userId);
+    return journal.withPhotos(List.of(changed)).getFirst();
   }
 
   /** Defects open before the inspection, with their observation in it, if any. */

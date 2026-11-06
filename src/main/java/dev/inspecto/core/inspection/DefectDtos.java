@@ -268,13 +268,26 @@ public final class DefectDtos {
     }
   }
 
-  /** Photo attached to an observation. */
-  public record ObservationPhotoResponse(UUID photoId, String caption, int sortOrder) {}
+  /** Photo to attach to an observation. */
+  public record AttachPhotoRequest(@NotNull UUID photoId, @Size(max = 200) String caption) {
 
-  /**
-   * Observation as returned by the API. Photos are attached through media-service from T-206; until
-   * then the list is always empty.
-   */
+    /** Service input with a trimmed caption. */
+    public ObservationPhotoService.NewPhoto toNewPhoto() {
+      return new ObservationPhotoService.NewPhoto(photoId, trimToNull(caption));
+    }
+  }
+
+  /** Photo attached to an observation. */
+  public record ObservationPhotoResponse(UUID photoId, String caption, int sortOrder) {
+
+    /** Maps a link to the response. */
+    public static ObservationPhotoResponse of(ObservationPhoto photo) {
+      return new ObservationPhotoResponse(
+          photo.getPhotoId(), photo.getCaption(), photo.getSortOrder());
+    }
+  }
+
+  /** Observation with its photos as returned by the API. */
   public record ObservationResponse(
       UUID id,
       UUID defectId,
@@ -293,11 +306,12 @@ public final class DefectDtos {
       photos = List.copyOf(photos);
     }
 
-    /** Maps an entity to the response; {@code null} stays {@code null}. */
-    public static ObservationResponse of(DefectObservation observation) {
-      if (observation == null) {
+    /** Maps an observation view to the response; {@code null} stays {@code null}. */
+    public static ObservationResponse of(ObservationView view) {
+      if (view == null) {
         return null;
       }
+      DefectObservation observation = view.observation();
       ObservationEntry entry = observation.entry();
       return new ObservationResponse(
           observation.getId(),
@@ -308,7 +322,7 @@ public final class DefectDtos {
           entry.severity(),
           entry.comment(),
           observation.getObservedBy(),
-          List.of(),
+          view.photos().stream().map(ObservationPhotoResponse::of).toList(),
           observation.getCreatedAt(),
           observation.getVersion());
     }

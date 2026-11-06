@@ -102,7 +102,12 @@ class DefectAccessIntegrationTest {
             "/inspections/{i}/observations",
             "{\"defectId\":\"{d}\",\"status\":\"RESOLVED\"}"),
         new Endpoint(
-            HttpMethod.PATCH, "/observations/{o}", "{\"status\":\"RESOLVED\",\"version\":0}"));
+            HttpMethod.PATCH, "/observations/{o}", "{\"status\":\"RESOLVED\",\"version\":0}"),
+        new Endpoint(
+            HttpMethod.POST,
+            "/observations/{o}/photos",
+            "{\"photoId\":\"" + UUID.randomUUID() + "\"}"),
+        new Endpoint(HttpMethod.DELETE, "/observations/{o}/photos/" + UUID.randomUUID(), ""));
   }
 
   @BeforeEach

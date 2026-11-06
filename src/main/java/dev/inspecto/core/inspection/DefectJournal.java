@@ -11,7 +11,9 @@ import dev.inspecto.core.inspection.DefectStatusChange.Transition;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +28,7 @@ public class DefectJournal {
   private final DefectRepository defects;
   private final ObservationRepository observations;
   private final DefectHistoryRepository history;
+  private final ObservationPhotoRepository photos;
   private final Clock clock;
 
   /** Creates the component. */
@@ -33,10 +36,12 @@ public class DefectJournal {
       DefectRepository defects,
       ObservationRepository observations,
       DefectHistoryRepository history,
+      ObservationPhotoRepository photos,
       Clock clock) {
     this.defects = defects;
     this.observations = observations;
     this.history = history;
+    this.photos = photos;
     this.clock = clock;
   }
 
@@ -99,9 +104,22 @@ public class DefectJournal {
     }
   }
 
-  /** Observations of a defect, the latest inspection first. */
-  public List<DefectObservation> observationsOf(UUID defectId) {
-    return observations.findLatestFirst(defectId);
+  /** Observations of a defect with their photos, the latest inspection first. */
+  public List<ObservationView> observationsOf(UUID defectId) {
+    return withPhotos(observations.findLatestFirst(defectId));
+  }
+
+  /** The observations with their photos, loaded in one query; the order is kept. */
+  public List<ObservationView> withPhotos(List<DefectObservation> list) {
+    Map<UUID, List<ObservationPhoto>> byObservation =
+        photos
+            .findByObservationIdInOrderBySortOrderAscIdAsc(
+                list.stream().map(DefectObservation::getId).toList())
+            .stream()
+            .collect(Collectors.groupingBy(ObservationPhoto::getObservationId));
+    return list.stream()
+        .map(o -> new ObservationView(o, byObservation.getOrDefault(o.getId(), List.of())))
+        .toList();
   }
 
   /** Status history of a defect, oldest first. */

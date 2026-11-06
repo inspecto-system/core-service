@@ -78,7 +78,7 @@ public class DefectService {
         new ObservationEntry(DefectStatus.OPEN, request.fields().severity(), request.comment());
     DefectObservation first =
         journal.recordFirst(defect, userId, new ObservationDraft(request.checklistItemId(), entry));
-    return new DefectView(defect, List.of(first));
+    return new DefectView(defect, List.of(ObservationView.withoutPhotos(first)));
   }
 
   /** Defect with its observations, the latest inspection first. */
@@ -153,7 +153,7 @@ public class DefectService {
   }
 
   /** Defect with its observations, the latest inspection first. */
-  public record DefectView(Defect defect, List<DefectObservation> observations) {
+  public record DefectView(Defect defect, List<ObservationView> observations) {
 
     /** Copies the observation list. */
     public DefectView {

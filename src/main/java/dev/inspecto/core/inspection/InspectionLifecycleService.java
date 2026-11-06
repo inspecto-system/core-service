@@ -1,7 +1,6 @@
 package dev.inspecto.core.inspection;
 
 import dev.inspecto.core.common.error.ApiException;
-import dev.inspecto.core.common.error.ErrorCode;
 import dev.inspecto.core.common.error.OptimisticVersion;
 import java.time.Clock;
 import java.time.Instant;
@@ -16,7 +15,7 @@ public class InspectionLifecycleService {
 
   private final InspectionAccess access;
   private final InspectionRepository inspections;
-  private final ObservationRepository observations;
+  private final DraftDeletion draftDeletion;
   private final DefectJournal journal;
   private final Clock clock;
 
@@ -24,12 +23,12 @@ public class InspectionLifecycleService {
   public InspectionLifecycleService(
       InspectionAccess access,
       InspectionRepository inspections,
-      ObservationRepository observations,
+      DraftDeletion draftDeletion,
       DefectJournal journal,
       Clock clock) {
     this.access = access;
     this.inspections = inspections;
-    this.observations = observations;
+    this.draftDeletion = draftDeletion;
     this.journal = journal;
     this.clock = clock;
   }
@@ -69,7 +68,8 @@ public class InspectionLifecycleService {
   }
 
   /**
-   * Deletes a draft inspection with its checklist and the defects first found in it.
+   * Deletes a draft inspection with its checklist and the defects first found in it; their photos
+   * are deleted in media-service through the outbox.
    *
    * @throws ApiException {@code INVALID_STATE_TRANSITION} unless the inspection is a draft, {@code
    *     RESOURCE_IN_USE} when deleting it would change the defects of other inspections
@@ -78,10 +78,7 @@ public class InspectionLifecycleService {
   public void delete(UUID inspectionId, UUID userId) {
     Inspection inspection = access.ownedInspection(inspectionId, userId);
     inspection.requireDeletable();
-    if (observations.linksOtherInspections(inspectionId)) {
-      throw new ApiException(
-          ErrorCode.RESOURCE_IN_USE, "The draft shares defects with other inspections");
-    }
+    draftDeletion.prepare(inspectionId);
     inspections.delete(inspection);
   }
 
