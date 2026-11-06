@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,10 +37,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class DefectController {
 
   private final DefectService defects;
+  private final DefectCreation creation;
 
   /** Creates the controller. */
-  public DefectController(DefectService defects) {
+  public DefectController(DefectService defects, DefectCreation creation) {
     this.defects = defects;
+    this.creation = creation;
   }
 
   /** Defects of a property. */
@@ -53,15 +56,16 @@ public class DefectController {
         defects.list(propertyId, CurrentUser.id(jwt), filter, query.page(), query.size()));
   }
 
-  /** Registers a new defect with its first observation. */
+  /** Registers a new defect with its first observation; a repeated key returns the first defect. */
   @PostMapping("/inspections/{inspectionId}/defects")
   @ResponseStatus(HttpStatus.CREATED)
   public DefectDetailsResponse create(
       @AuthenticationPrincipal Jwt jwt,
       @PathVariable UUID inspectionId,
+      @RequestHeader(name = DefectCreation.HEADER, required = false) String idempotencyKey,
       @Valid @RequestBody CreateDefectRequest request) {
     return DefectDetailsResponse.of(
-        defects.create(inspectionId, CurrentUser.id(jwt), request.toNewDefect()));
+        creation.create(inspectionId, CurrentUser.id(jwt), request.toNewDefect(), idempotencyKey));
   }
 
   /** Defect with its observations. */
