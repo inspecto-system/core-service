@@ -37,6 +37,9 @@ public class OutboxEvent {
   @Column(name = "next_attempt_at", nullable = false)
   private Instant nextAttemptAt;
 
+  @Column(name = "last_error")
+  private String lastError;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -54,6 +57,26 @@ public class OutboxEvent {
     this.nextAttemptAt = now;
   }
 
+  /** Marks the job as done; it is not taken again. */
+  public void markDone() {
+    status = "DONE";
+    lastError = null;
+  }
+
+  /**
+   * Records a failed attempt; the job is taken again at the given time. Jobs are retried until they
+   * succeed (ADR-018).
+   */
+  public void retryAt(Instant next, String error) {
+    attempts++;
+    nextAttemptAt = next;
+    lastError = error;
+  }
+
+  public UUID getId() {
+    return id;
+  }
+
   public OutboxEventType getType() {
     return type;
   }
@@ -68,5 +91,13 @@ public class OutboxEvent {
 
   public int getAttempts() {
     return attempts;
+  }
+
+  public Instant getNextAttemptAt() {
+    return nextAttemptAt;
+  }
+
+  public String getLastError() {
+    return lastError;
   }
 }

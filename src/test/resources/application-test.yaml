@@ -4,3 +4,8 @@ spring:
   flyway:
     user: ""
     password: ""
+
+inspecto:
+  outbox:
+    # Tests drive OutboxProcessor directly, so they see each step.
+    enabled: false

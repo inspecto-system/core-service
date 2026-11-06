@@ -69,6 +69,19 @@ inspecto:
       "[report-service]": ${CORE_REPORT_CLIENT_SECRET:}
       "[ml-service]": ${CORE_ML_CLIENT_SECRET:}
 
+  media:
+    # media-service in the internal network (ADR-013); calls are made with a token signed by core.
+    url: ${CORE_MEDIA_URL:http://127.0.0.1:8082}
+    timeout: 3s
+    # Must match MEDIA_MAX_PHOTOS_PER_OBSERVATION of media-service, which publishes it to clients.
+    max-photos-per-observation: 10
+  outbox:
+    # Background delivery of clean-up jobs (ADR-018); switched off in tests that drive it directly.
+    enabled: true
+    poll-interval: 10s
+    batch-size: 20
+    max-retry-delay: 1h
+
 logging:
   structured:
     # JSON logs (CODE_QUALITY.md §1) with secrets masked (SECURITY.md §5).

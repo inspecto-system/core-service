@@ -1,5 +1,6 @@
 package dev.inspecto.core.inspection;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -26,15 +27,21 @@ public class OpenDefects {
   private final InspectionRepository inspections;
   private final DefectRepository defects;
   private final ObservationRepository observations;
+  private final DefectJournal journal;
 
   /** Creates the component. */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification = "Spring injects shared singleton beans; copying them is meaningless")
   public OpenDefects(
       InspectionRepository inspections,
       DefectRepository defects,
-      ObservationRepository observations) {
+      ObservationRepository observations,
+      DefectJournal journal) {
     this.inspections = inspections;
     this.defects = defects;
     this.observations = observations;
+    this.journal = journal;
   }
 
   /** Open defects of the inspection's property as they stood before the inspection. */
@@ -46,15 +53,37 @@ public class OpenDefects {
     Map<UUID, List<DefectObservation>> byDefect =
         observations.findByPropertyId(propertyId).stream()
             .collect(Collectors.groupingBy(DefectObservation::getDefectId));
-    List<OpenDefect> result = new ArrayList<>();
+    List<Candidate> candidates = new ArrayList<>();
     for (Defect defect : defects.findByPropertyIdOrderByCreatedAtAscIdAsc(propertyId)) {
       List<DefectObservation> defectObservations = byDefect.getOrDefault(defect.getId(), List.of());
       latestBefore(target, defectObservations, byId)
           .filter(last -> last.getStatus() == DefectStatus.OPEN)
           .ifPresent(last ->
-              result.add(new OpenDefect(defect, last, observationIn(target, defectObservations))));
+              candidates.add(
+                  new Candidate(defect, last, observationIn(target, defectObservations))));
     }
-    return result;
+    return withPhotos(candidates);
+  }
+
+  /** Adds the photos of all chosen observations, loaded in one query. */
+  private List<OpenDefect> withPhotos(List<Candidate> candidates) {
+    List<DefectObservation> chosen = new ArrayList<>();
+    for (Candidate c : candidates) {
+      chosen.add(c.last());
+      if (c.current() != null) {
+        chosen.add(c.current());
+      }
+    }
+    Map<UUID, ObservationView> views =
+        journal.withPhotos(chosen).stream()
+            .collect(Collectors.toMap(v -> v.observation().getId(), Function.identity()));
+    return candidates.stream()
+        .map(c ->
+            new OpenDefect(
+                c.defect(),
+                views.get(c.last().getId()),
+                c.current() == null ? null : views.get(c.current().getId())))
+        .toList();
   }
 
   private static Optional<DefectObservation> latestBefore(
@@ -79,5 +108,7 @@ public class OpenDefects {
    * @param currentObservation observation in the inspection, {@code null} if not recorded yet
    */
   public record OpenDefect(
-      Defect defect, DefectObservation lastObservation, DefectObservation currentObservation) {}
+      Defect defect, ObservationView lastObservation, ObservationView currentObservation) {}
+
+  private record Candidate(Defect defect, DefectObservation last, DefectObservation current) {}
 }

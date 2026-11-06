@@ -3,6 +3,7 @@ package dev.inspecto.core.inspection;
 import dev.inspecto.core.inspection.DefectRepository.InspectionCount;
 import dev.inspecto.core.property.Room;
 import dev.inspecto.core.property.RoomRepository;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -27,17 +28,23 @@ public class InspectionViews {
   private final ObservationRepository observations;
   private final DefectRepository defects;
   private final RoomRepository rooms;
+  private final DefectJournal journal;
 
   /** Creates the component. */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification = "Spring injects shared singleton beans; copying them is meaningless")
   public InspectionViews(
       ChecklistItemRepository items,
       ObservationRepository observations,
       DefectRepository defects,
-      RoomRepository rooms) {
+      RoomRepository rooms,
+      DefectJournal journal) {
     this.items = items;
     this.observations = observations;
     this.defects = defects;
     this.rooms = rooms;
+    this.journal = journal;
   }
 
   /** Inspection with its stored checklist and observations. */
@@ -50,10 +57,13 @@ public class InspectionViews {
    * it has checklist items or observed defects; rooms are in display order.
    */
   public InspectionView of(Inspection inspection, List<ChecklistItem> checklist) {
-    List<DefectObservation> observed =
-        observations.findByInspectionIdOrderByCreatedAtAscIdAsc(inspection.getId());
+    List<ObservationView> observed =
+        journal.withPhotos(
+            observations.findByInspectionIdOrderByCreatedAtAscIdAsc(inspection.getId()));
     Map<UUID, Defect> defectById =
-        defects.findAllById(observed.stream().map(DefectObservation::getDefectId).toList()).stream()
+        defects
+            .findAllById(observed.stream().map(o -> o.observation().getDefectId()).toList())
+            .stream()
             .collect(Collectors.toMap(Defect::getId, Function.identity()));
     Map<UUID, List<ChecklistItem>> itemsByRoom =
         checklist.stream()
@@ -63,7 +73,7 @@ public class InspectionViews {
                     ChecklistItem::getRoomId, LinkedHashMap::new, Collectors.toList()));
     Map<UUID, List<ObservedDefect>> observedByRoom =
         observed.stream()
-            .map(o -> new ObservedDefect(o, defectById.get(o.getDefectId())))
+            .map(o -> new ObservedDefect(o, defectById.get(o.observation().getDefectId())))
             .collect(Collectors.groupingBy(d -> d.defect().getRoomId()));
     Set<UUID> roomIds = new LinkedHashSet<>(itemsByRoom.keySet());
     roomIds.addAll(observedByRoom.keySet());
@@ -122,7 +132,7 @@ public class InspectionViews {
   }
 
   /** Observation together with its defect. */
-  public record ObservedDefect(DefectObservation observation, Defect defect) {}
+  public record ObservedDefect(ObservationView observation, Defect defect) {}
 
   /**
    * Inspection in the history of a property.

@@ -29,6 +29,9 @@ public final class ServiceTokenService {
   /** Shortest accepted client secret; secrets are generated, not chosen by people. */
   static final int MIN_SECRET_LENGTH = 32;
 
+  /** Subject of the tokens core-service issues for its own calls. */
+  public static final String OWN_CLIENT_ID = "core-service";
+
   private static final Logger LOG = LoggerFactory.getLogger(ServiceTokenService.class);
 
   private final JwtEncoder encoder;
@@ -78,17 +81,26 @@ public final class ServiceTokenService {
       LOG.warn("Rejected service token request for client {}", client.map(Enum::name).orElse("?"));
       throw new ApiException(ErrorCode.UNAUTHENTICATED, "Invalid client credentials");
     }
-    return sign(client.get());
+    ServiceClient caller = client.get();
+    return sign(caller.clientId(), caller.scopes());
   }
 
-  private IssuedServiceToken sign(ServiceClient client) {
+  /**
+   * Issues a token for calls of core-service itself to other services; core holds the signing key,
+   * so it needs no client secret.
+   */
+  public IssuedServiceToken issueOwn(List<String> scopes) {
+    return sign(OWN_CLIENT_ID, scopes);
+  }
+
+  private IssuedServiceToken sign(String subject, List<String> scopes) {
     Instant now = clock.instant();
     JwtClaimsSet claims =
         JwtClaimsSet.builder()
             .issuer(security.issuer())
             .audience(List.of(clients.audience()))
-            .subject(client.clientId())
-            .claim("scope", String.join(" ", client.scopes()))
+            .subject(subject)
+            .claim("scope", String.join(" ", scopes))
             .issuedAt(now)
             .expiresAt(now.plus(clients.tokenTtl()))
             .id(UUID.randomUUID().toString())

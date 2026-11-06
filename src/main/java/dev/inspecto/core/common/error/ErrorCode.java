@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 /** Machine-readable error codes of the API (platform/api/common.yaml, ErrorCode). */
 public enum ErrorCode {
   VALIDATION_ERROR(HttpStatus.BAD_REQUEST),
+  PHOTO_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST),
   UNAUTHENTICATED(HttpStatus.UNAUTHORIZED),
   TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED),
   INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED),
