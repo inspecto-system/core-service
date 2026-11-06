@@ -1,5 +1,6 @@
 package dev.inspecto.core.security;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.KeyUse;
@@ -28,18 +29,33 @@ public final class JwtKeyProvider {
   private final RSAKey rsaKey;
   private final RSAPublicKey publicKey;
 
-  /** Loads the configured key or, when none is configured, generates an ephemeral one. */
+  /**
+   * Loads the configured key or, when none is configured, generates an ephemeral one.
+   *
+   * <p>A configured key keeps the configured key id ({@code CORE_JWT_KEY_ID}), which changes on
+   * rotation. A generated key is new at every start, so its id is its RFC 7638 thumbprint: services
+   * that verify tokens with the JWKS (media-service) see an unknown {@code kid} after a restart and
+   * reload the keys instead of rejecting every new token.
+   */
   public JwtKeyProvider(SecurityProperties properties) throws GeneralSecurityException {
     String pem = properties.privateKey();
-    KeyPair keyPair = pem == null || pem.isBlank() ? generate() : parse(pem);
+    boolean generated = pem == null || pem.isBlank();
+    KeyPair keyPair = generated ? generate() : parse(pem);
     this.publicKey = (RSAPublicKey) keyPair.getPublic();
-    this.rsaKey =
+    RSAKey.Builder builder =
         new RSAKey.Builder(publicKey)
             .privateKey(keyPair.getPrivate())
-            .keyID(properties.keyId())
             .keyUse(KeyUse.SIGNATURE)
-            .algorithm(JWSAlgorithm.RS256)
-            .build();
+            .algorithm(JWSAlgorithm.RS256);
+    this.rsaKey = generated ? withThumbprintId(builder) : builder.keyID(properties.keyId()).build();
+  }
+
+  private static RSAKey withThumbprintId(RSAKey.Builder builder) throws GeneralSecurityException {
+    try {
+      return builder.keyIDFromThumbprint().build();
+    } catch (JOSEException e) {
+      throw new GeneralSecurityException("Cannot compute the key thumbprint", e);
+    }
   }
 
   /** Key pair including the private key, for signing. */

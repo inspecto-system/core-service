@@ -2,6 +2,7 @@ package dev.inspecto.core.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nimbusds.jose.JOSEException;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -31,6 +32,21 @@ class JwtKeyProviderTest {
     JwtKeyProvider provider = new JwtKeyProvider(properties(" "));
 
     assertThat(provider.publicKey().getModulus().bitLength()).isEqualTo(2048);
+  }
+
+  @Test
+  void shouldNameGeneratedKeyByItsThumbprintSoRestartsChangeTheKeyId()
+      throws GeneralSecurityException, JOSEException {
+    JwtKeyProvider first = new JwtKeyProvider(properties(null));
+    JwtKeyProvider afterRestart = new JwtKeyProvider(properties(null));
+
+    String keyId = first.signingKey().getKeyID();
+    assertThat(keyId).isEqualTo(first.signingKey().computeThumbprint().toString());
+    assertThat(keyId).isNotEqualTo("test-key");
+    assertThat(afterRestart.signingKey().getKeyID()).isNotEqualTo(keyId);
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> keys = (List<Map<String, Object>>) first.publicJwks().get("keys");
+    assertThat(keys.get(0)).containsEntry("kid", keyId);
   }
 
   @Test

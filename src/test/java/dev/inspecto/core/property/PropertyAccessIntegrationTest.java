@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import dev.inspecto.core.TestcontainersConfiguration;
+import dev.inspecto.core.security.JwtKeyProvider;
 import dev.inspecto.core.security.SecurityProperties;
 import dev.inspecto.core.support.ApiUsers;
 import java.time.Instant;
@@ -43,6 +44,7 @@ class PropertyAccessIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JwtEncoder jwtEncoder;
   @Autowired private SecurityProperties properties;
+  @Autowired private JwtKeyProvider keys;
 
   private String owner;
   private String propertyId;
@@ -179,7 +181,8 @@ class PropertyAccessIntegrationTest {
             .issuedAt(now)
             .expiresAt(now.plusSeconds(60))
             .build();
-    JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256).keyId(properties.keyId()).build();
+    JwsHeader header =
+        JwsHeader.with(SignatureAlgorithm.RS256).keyId(keys.signingKey().getKeyID()).build();
     return "Bearer " + jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
   }
 

@@ -44,6 +44,7 @@ class AuthFlowIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JwtEncoder jwtEncoder;
   @Autowired private SecurityProperties properties;
+  @Autowired private JwtKeyProvider keys;
 
   @Test
   void shouldRegisterAndRejectDuplicateEmailCaseInsensitively() throws Exception {
@@ -258,7 +259,7 @@ class AuthFlowIntegrationTest {
         .perform(get("/api/v1/.well-known/jwks.json"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.keys[0].kty").value("RSA"))
-        .andExpect(jsonPath("$.keys[0].kid").value(properties.keyId()))
+        .andExpect(jsonPath("$.keys[0].kid").value(keys.signingKey().getKeyID()))
         .andExpect(jsonPath("$.keys[0].d").doesNotExist());
   }
 
@@ -305,7 +306,8 @@ class AuthFlowIntegrationTest {
             .issuedAt(issuedAt)
             .expiresAt(expiresAt)
             .build();
-    JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256).keyId(properties.keyId()).build();
+    JwsHeader header =
+        JwsHeader.with(SignatureAlgorithm.RS256).keyId(keys.signingKey().getKeyID()).build();
     return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
   }
 
