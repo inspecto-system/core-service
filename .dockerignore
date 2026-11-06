@@ -1,0 +1,7 @@
+# Build context of the Docker image: only sources and the Gradle wrapper.
+.git
+.gradle
+.idea
+build
+**/build
+*.iml

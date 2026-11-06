@@ -32,3 +32,9 @@ jobs:
       # CodeQL is the slowest check: on merges to main and weekly, not on every PR commit.
       codeql-language: ${{ github.event_name != 'pull_request' && 'java-kotlin' || '' }}
       codeql-build-mode: none
+
+  container:
+    if: github.event_name != 'schedule'
+    uses: inspecto-system/platform/.github/workflows/container.yml@main
+    with:
+      image: inspecto/core-service
