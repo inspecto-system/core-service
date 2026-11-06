@@ -45,4 +45,7 @@ public final class UserDtos {
   public record ChangePasswordRequest(
       @NotBlank @Size(max = 128) String currentPassword,
       @NotBlank @Size(min = 10, max = 128) String newPassword) {}
+
+  /** Password confirmation of an irreversible operation (account deletion). */
+  public record PasswordConfirmation(@NotBlank @Size(max = 128) String password) {}
 }

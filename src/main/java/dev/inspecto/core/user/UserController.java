@@ -2,6 +2,7 @@ package dev.inspecto.core.user;
 
 import dev.inspecto.core.security.CurrentUser;
 import dev.inspecto.core.user.UserDtos.ChangePasswordRequest;
+import dev.inspecto.core.user.UserDtos.PasswordConfirmation;
 import dev.inspecto.core.user.UserDtos.UpdateUserRequest;
 import dev.inspecto.core.user.UserDtos.UserResponse;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,10 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
   private final UserService users;
+  private final AccountDeletion deletion;
 
   /** Creates the controller. */
-  public UserController(UserService users) {
+  public UserController(UserService users, AccountDeletion deletion) {
     this.users = users;
+    this.deletion = deletion;
   }
 
   /** Current profile. */
@@ -50,5 +54,13 @@ public class UserController {
   public void changePassword(
       @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ChangePasswordRequest request) {
     users.changePassword(CurrentUser.id(jwt), request.currentPassword(), request.newPassword());
+  }
+
+  /** Deletes the account and all its data; files are removed afterwards (ADR-018). */
+  @DeleteMapping
+  @ResponseStatus(HttpStatus.ACCEPTED)
+  public void delete(
+      @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PasswordConfirmation request) {
+    deletion.delete(CurrentUser.id(jwt), request.password());
   }
 }
