@@ -1,6 +1,7 @@
 package dev.inspecto.core.outbox;
 
 import dev.inspecto.core.media.MediaUnavailableException;
+import dev.inspecto.core.report.ReportUnavailableException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.Clock;
 import java.time.Duration;
@@ -32,6 +33,9 @@ public class OutboxProcessor {
   private final Clock clock;
 
   /** Creates the processor. */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification = "Spring injects shared singleton beans; copying them is meaningless")
   public OutboxProcessor(
       OutboxEventRepository events,
       OutboxHandler handler,
@@ -71,7 +75,7 @@ public class OutboxProcessor {
       handler.handle(event);
       event.markDone();
       return true;
-    } catch (MediaUnavailableException | IllegalArgumentException e) {
+    } catch (MediaUnavailableException | ReportUnavailableException | IllegalArgumentException e) {
       Instant next = now.plus(retryDelay(event.getAttempts()));
       // Only the exception type and its message are kept: they never contain tokens or user data.
       event.retryAt(next, e.getClass().getSimpleName() + ": " + e.getMessage());

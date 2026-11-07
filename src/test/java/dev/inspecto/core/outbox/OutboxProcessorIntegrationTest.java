@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.inspecto.core.TestcontainersConfiguration;
 import dev.inspecto.core.common.id.UuidV7;
 import dev.inspecto.core.support.FakeMedia;
+import dev.inspecto.core.support.FakeReports;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.UUID;
@@ -18,26 +19,29 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-/** Delivery of clean-up jobs to media-service (ADR-018, T-206). */
+/** Delivery of clean-up jobs to media-service and report-service (ADR-018, T-206). */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
 class OutboxProcessorIntegrationTest {
 
   private static final FakeMedia MEDIA = FakeMedia.start();
+  private static final FakeReports REPORTS = FakeReports.start();
 
   @Autowired private OutboxProcessor processor;
   @Autowired private OutboxEventRepository events;
   @Autowired private Clock clock;
 
   @DynamicPropertySource
-  static void media(DynamicPropertyRegistry registry) {
+  static void services(DynamicPropertyRegistry registry) {
     registry.add("inspecto.media.url", MEDIA::url);
+    registry.add("inspecto.report.url", REPORTS::url);
   }
 
   @AfterAll
-  static void stopMedia() {
+  static void stopServices() {
     MEDIA.close();
+    REPORTS.close();
   }
 
   @BeforeEach
@@ -45,6 +49,8 @@ class OutboxProcessorIntegrationTest {
     events.deleteAll();
     MEDIA.failWith(0);
     MEDIA.clearCalls();
+    REPORTS.failWith(0);
+    REPORTS.clearCalls();
   }
 
   private OutboxEvent enqueue(OutboxEventType type, String payload) {
@@ -70,6 +76,15 @@ class OutboxProcessorIntegrationTest {
             "DELETE /internal/v1/photos/" + photo,
             "DELETE /internal/v1/photos?propertyId=" + property,
             "DELETE /internal/v1/photos?ownerId=" + owner);
+    assertThat(REPORTS.calls())
+        .extracting(c -> c.method() + " " + c.path())
+        .containsExactlyInAnyOrder(
+            "DELETE /internal/v1/reports?propertyId=" + property,
+            "DELETE /internal/v1/reports?requestedBy=" + owner);
+    assertThat(REPORTS.calls())
+        .allSatisfy(c ->
+            assertThat(c.tokenClaims())
+                .contains("\"scope\":\"reports.manage\"", "inspecto-internal"));
     assertThat(events.findById(account.getId()))
         .get()
         .extracting(OutboxEvent::getStatus)
@@ -102,6 +117,34 @@ class OutboxProcessorIntegrationTest {
     MEDIA.failWith(0);
     assertThat(processor.processDue()).as("not due yet").isZero();
     assertThat(MEDIA.calls()).isEmpty();
+  }
+
+  @Test
+  void shouldRepeatWholeJobUntilReportServiceHasDeletedToo() {
+    UUID property = UUID.randomUUID();
+    OutboxEvent event =
+        enqueue(OutboxEventType.DELETE_PROPERTY_FILES, "{\"propertyId\":\"" + property + "\"}");
+    REPORTS.failWith(503);
+
+    assertThat(processor.processDue()).isZero();
+
+    OutboxEvent failed = events.findById(event.getId()).orElseThrow();
+    assertThat(failed.getStatus()).as("media alone is not enough").isEqualTo("PENDING");
+    assertThat(failed.getLastError()).startsWith("ReportUnavailableException");
+    assertThat(MEDIA.calls()).hasSize(1);
+
+    REPORTS.failWith(0);
+    failed.retryAt(clock.instant(), failed.getLastError());
+    events.save(failed);
+    assertThat(processor.processDue()).isEqualTo(1);
+    assertThat(MEDIA.calls()).as("deleting photos again is harmless").hasSize(2);
+    assertThat(REPORTS.calls())
+        .extracting(FakeMedia.Call::path)
+        .containsOnly("/internal/v1/reports?propertyId=" + property);
+    assertThat(events.findById(event.getId()))
+        .get()
+        .extracting(OutboxEvent::getStatus)
+        .isEqualTo("DONE");
   }
 
   @Test

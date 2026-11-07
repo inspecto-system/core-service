@@ -75,6 +75,10 @@ inspecto:
     timeout: 3s
     # Must match MEDIA_MAX_PHOTOS_PER_OBSERVATION of media-service, which publishes it to clients.
     max-photos-per-observation: 10
+  report:
+    # report-service in the internal network; core deletes reports of deleted properties and accounts.
+    url: ${CORE_REPORT_URL:http://127.0.0.1:8083}
+    timeout: 10s
   outbox:
     # Background delivery of clean-up jobs (ADR-018); switched off in tests that drive it directly.
     enabled: true
