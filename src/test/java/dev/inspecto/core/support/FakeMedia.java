@@ -103,7 +103,7 @@ public final class FakeMedia implements AutoCloseable {
     }
   }
 
-  private static String claims(String authorization) {
+  static String claims(String authorization) {
     if (authorization == null || !authorization.startsWith("Bearer ")) {
       return "";
     }
@@ -113,7 +113,7 @@ public final class FakeMedia implements AutoCloseable {
         : new String(Base64.getUrlDecoder().decode(jwt[1]), StandardCharsets.UTF_8);
   }
 
-  private static void respond(HttpExchange exchange, int status, String body) throws IOException {
+  static void respond(HttpExchange exchange, int status, String body) throws IOException {
     byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
     exchange.getResponseHeaders().set("Content-Type", "application/json");
     exchange.sendResponseHeaders(status, bytes.length == 0 ? -1 : bytes.length);

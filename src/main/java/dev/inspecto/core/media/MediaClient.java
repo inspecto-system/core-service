@@ -1,14 +1,10 @@
 package dev.inspecto.core.media;
 
+import dev.inspecto.core.security.OwnServiceToken;
 import dev.inspecto.core.security.ServiceTokenService;
-import dev.inspecto.core.security.ServiceTokenService.IssuedServiceToken;
 import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -29,19 +25,11 @@ public class MediaClient {
   /** Scope required by the photo management endpoints of media-service. */
   public static final String SCOPE = "photos.manage";
 
-  /** A token is renewed this long before it expires. */
-  private static final Duration RENEW_MARGIN = Duration.ofSeconds(30);
-
   private static final String PHOTO = "/internal/v1/photos/{photoId}";
 
   private final RestClient http;
-  private final ServiceTokenService tokens;
+  private final OwnServiceToken token;
   private final MediaProperties properties;
-  private final Clock clock;
-
-  private final ReentrantLock tokenLock = new ReentrantLock();
-  private String token;
-  private Instant tokenRenewAt = Instant.MIN;
 
   /** Creates the client. */
   public MediaClient(ServiceTokenService tokens, MediaProperties properties, Clock clock) {
@@ -49,9 +37,8 @@ public class MediaClient {
     factory.setConnectTimeout(properties.timeout());
     factory.setReadTimeout(properties.timeout());
     this.http = RestClient.builder().baseUrl(properties.url()).requestFactory(factory).build();
-    this.tokens = tokens;
+    this.token = new OwnServiceToken(tokens, clock, SCOPE);
     this.properties = properties;
-    this.clock = clock;
   }
 
   /** Photos allowed on one observation. */
@@ -146,18 +133,7 @@ public class MediaClient {
   }
 
   private String bearer() {
-    tokenLock.lock();
-    try {
-      Instant now = clock.instant();
-      if (token == null || !now.isBefore(tokenRenewAt)) {
-        IssuedServiceToken issued = tokens.issueOwn(List.of(SCOPE));
-        token = issued.value();
-        tokenRenewAt = now.plusSeconds(issued.expiresInSeconds()).minus(RENEW_MARGIN);
-      }
-      return "Bearer " + token;
-    } finally {
-      tokenLock.unlock();
-    }
+    return token.bearer();
   }
 
   private static MediaUnavailableException unavailable(RestClientException e) {
