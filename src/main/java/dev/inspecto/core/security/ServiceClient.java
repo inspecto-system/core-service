@@ -10,12 +10,20 @@ import java.util.Optional;
  */
 public enum ServiceClient {
   MEDIA("media-service", List.of(ServiceClient.ACCESS_CHECK)),
-  REPORT("report-service", List.of(ServiceClient.ACCESS_CHECK)),
+  REPORT(
+      "report-service",
+      List.of(ServiceClient.ACCESS_CHECK, ServiceClient.REPORT_DATA, ServiceClient.PHOTOS_READ)),
   // ml-service calls only media-service, which checks the token itself.
   ML("ml-service", List.of());
 
   /** Scope of {@code GET /internal/v1/access/properties/{id}}. */
   public static final String ACCESS_CHECK = "access.check";
+
+  /** Scope of {@code GET /internal/v1/inspections/{id}/report-data}. */
+  public static final String REPORT_DATA = "reports.data";
+
+  /** Scope of reading photos in media-service, which checks it itself (media.yaml). */
+  public static final String PHOTOS_READ = "photos.read";
 
   private final String clientId;
   private final List<String> scopes;
