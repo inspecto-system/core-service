@@ -13,8 +13,8 @@ public enum ServiceClient {
   REPORT(
       "report-service",
       List.of(ServiceClient.ACCESS_CHECK, ServiceClient.REPORT_DATA, ServiceClient.PHOTOS_READ)),
-  // ml-service calls only media-service, which checks the token itself.
-  ML("ml-service", List.of());
+  // ml-service reads photos from media-service (ml.yaml), which checks the scope itself.
+  ML("ml-service", List.of(ServiceClient.PHOTOS_READ));
 
   /** Scope of {@code GET /internal/v1/access/properties/{id}}. */
   public static final String ACCESS_CHECK = "access.check";
