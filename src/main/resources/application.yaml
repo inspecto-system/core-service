@@ -79,6 +79,11 @@ inspecto:
     # report-service in the internal network; core deletes reports of deleted properties and accounts.
     url: ${CORE_REPORT_URL:http://127.0.0.1:8083}
     timeout: 10s
+  ml:
+    # ml-service in the internal network (T-602): category suggestions for a photo. Without an
+    # answer within the timeout the client gets an empty list, never an error (ml.yaml, T-604).
+    url: ${CORE_ML_URL:http://127.0.0.1:8084}
+    timeout: 3s
   outbox:
     # Background delivery of clean-up jobs (ADR-018); switched off in tests that drive it directly.
     enabled: true

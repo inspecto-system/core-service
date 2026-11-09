@@ -6,6 +6,7 @@ import dev.inspecto.core.common.error.FieldViolation;
 import dev.inspecto.core.common.id.UuidV7;
 import dev.inspecto.core.inspection.DefectService.DefectView;
 import dev.inspecto.core.inspection.DefectService.NewDefect;
+import dev.inspecto.core.suggestion.CategorySuggestionService;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -29,12 +30,18 @@ public class DefectCreation {
 
   private final DefectService defects;
   private final DefectIdempotencyKeyRepository keys;
+  private final CategorySuggestionService suggestions;
   private final Clock clock;
 
   /** Creates the service. */
-  public DefectCreation(DefectService defects, DefectIdempotencyKeyRepository keys, Clock clock) {
+  public DefectCreation(
+      DefectService defects,
+      DefectIdempotencyKeyRepository keys,
+      CategorySuggestionService suggestions,
+      Clock clock) {
     this.defects = defects;
     this.keys = keys;
+    this.suggestions = suggestions;
     this.clock = clock;
   }
 
@@ -42,13 +49,13 @@ public class DefectCreation {
    * Creates the defect, or returns the one created earlier with the same key.
    *
    * @param key value of the header, or null without it
-   * @throws ApiException {@code VALIDATION_ERROR} for a key of a wrong length; the errors of {@link
-   *     DefectService#create}
+   * @throws ApiException {@code VALIDATION_ERROR} for a key of a wrong length or an unusable {@code
+   *     suggestionId}; the errors of {@link DefectService#create}
    */
   @Transactional
   public DefectView create(UUID inspectionId, UUID userId, NewDefect request, String key) {
     if (key == null) {
-      return defects.create(inspectionId, userId, request);
+      return createNew(inspectionId, userId, request);
     }
     requireValid(key);
     keys.lock(userId + ":" + key);
@@ -56,10 +63,20 @@ public class DefectCreation {
     if (earlier.isPresent()) {
       return defects.get(earlier.get().getDefectId(), userId);
     }
-    DefectView created = defects.create(inspectionId, userId, request);
+    DefectView created = createNew(inspectionId, userId, request);
     keys.save(
         new DefectIdempotencyKey(
             UuidV7.generate(clock), userId, key, created.defect().getId(), clock.instant()));
+    return created;
+  }
+
+  /** The defect and, when it was created with an ML suggestion, the user's decision on it. */
+  private DefectView createNew(UUID inspectionId, UUID userId, NewDefect request) {
+    DefectView created = defects.create(inspectionId, userId, request);
+    if (request.suggestionId() != null) {
+      suggestions.recordDecision(
+          request.suggestionId(), userId, created.defect().getId(), request.fields().categoryId());
+    }
     return created;
   }
 
