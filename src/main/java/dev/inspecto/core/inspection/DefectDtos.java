@@ -36,13 +36,15 @@ public final class DefectDtos {
       @NotBlank @Size(max = 200) String title,
       @Size(max = 4000) String description,
       @NotNull Severity severity,
-      @Size(max = 2000) String comment) {
+      @Size(max = 2000) String comment,
+      UUID suggestionId) {
 
     /** Service input with trimmed text. */
     public NewDefect toNewDefect() {
       DefectFields fields =
           new DefectFields(categoryId, title.trim(), trimToNull(description), severity);
-      return new NewDefect(roomId, checklistItemId, elementGroup, fields, trimToNull(comment));
+      return new NewDefect(
+          roomId, checklistItemId, elementGroup, fields, trimToNull(comment), suggestionId);
     }
   }
 

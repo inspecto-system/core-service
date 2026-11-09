@@ -18,5 +18,8 @@ public interface DefectCategoryRepository extends JpaRepository<DefectCategory, 
 
   Optional<DefectCategory> findByIdAndOwnerIdIsNull(UUID id);
 
+  /** System category with the code. */
+  Optional<DefectCategory> findByCodeAndOwnerIdIsNull(String code);
+
   boolean existsByCodeAndOwnerIdIsNull(String code);
 }

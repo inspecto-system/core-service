@@ -124,7 +124,8 @@ public class DefectService {
       UUID checklistItemId,
       ElementGroup elementGroup,
       DefectFields fields,
-      String comment) {}
+      String comment,
+      UUID suggestionId) {}
 
   /**
    * Requested change of a defect.
