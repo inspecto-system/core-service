@@ -11,6 +11,7 @@ import dev.inspecto.core.support.ApiUsers;
 import dev.inspecto.core.support.FakeMedia;
 import dev.inspecto.core.support.FakeMl;
 import dev.inspecto.core.support.Fixtures;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -120,8 +121,11 @@ class CategorySuggestionIntegrationTest {
     ML.failWith(503);
     expectEmpty(suggest(photo, "ru"));
     ML.answer("model-1", THREE);
-    ML.delay(1500);
+    ML.delay(3000);
+    long started = System.nanoTime();
     expectEmpty(suggest(photo, "ru"));
+    // The 500 ms deadline covers the whole call, not only connecting and reading.
+    assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofMillis(2000));
     ML.answer("model-1", "");
     expectEmpty(suggest(photo, "ru"));
   }
