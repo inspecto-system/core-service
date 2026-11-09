@@ -3,10 +3,17 @@ package dev.inspecto.core.suggestion;
 import dev.inspecto.core.security.OwnServiceToken;
 import dev.inspecto.core.security.ServiceTokenService;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -31,8 +38,12 @@ public class MlClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(MlClient.class);
 
+  /** Calls of ml-service: each on its own virtual thread, so a hanging one blocks nothing. */
+  private static final ExecutorService CALLS = Executors.newVirtualThreadPerTaskExecutor();
+
   private final RestClient http;
   private final OwnServiceToken token;
+  private final Duration deadline;
 
   /** Creates the client. */
   public MlClient(ServiceTokenService tokens, MlProperties properties, Clock clock) {
@@ -41,14 +52,36 @@ public class MlClient {
     factory.setReadTimeout(properties.timeout());
     this.http = RestClient.builder().baseUrl(properties.url()).requestFactory(factory).build();
     this.token = new OwnServiceToken(tokens, clock, SCOPE);
+    this.deadline = properties.timeout();
   }
 
   /**
-   * Categories ml-service suggests for the photo, empty when it gave no answer.
+   * Categories ml-service suggests for the photo, empty when it gave no answer within the timeout.
+   *
+   * <p>The connect and read timeouts do not cover resolving the host name: with the ml container
+   * stopped, Docker's DNS needs about 5 s to fail (found by the T-604 scenario). The whole call
+   * therefore runs on a virtual thread and is given up after the timeout.
    *
    * @param photoId a photo the caller has checked the user may read
    */
   public Optional<Classification> classify(UUID photoId) {
+    CompletableFuture<Optional<Classification>> call =
+        CompletableFuture.supplyAsync(() -> request(photoId), CALLS);
+    Optional<Classification> answer = Optional.empty();
+    try {
+      answer = call.get(deadline.toMillis(), TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      call.cancel(true);
+      LOG.warn("ml-service gave no suggestion within the timeout", e);
+    } catch (ExecutionException e) {
+      LOG.warn("ml-service gave no suggestion", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    return answer;
+  }
+
+  private Optional<Classification> request(UUID photoId) {
     try {
       return Optional.ofNullable(
           http.post()
