@@ -85,6 +85,20 @@ class ServiceTokenIntegrationTest {
   }
 
   @Test
+  void shouldGrantMlServiceOnlyPhotoReading() throws Exception {
+    String body =
+        requestToken("client_credentials", "ml-service", ML_SECRET)
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    String payload = payloadOf(JsonPath.read(body, "$.access_token"));
+    assertThat((String) JsonPath.read(payload, "$.sub")).isEqualTo("ml-service");
+    assertThat((String) JsonPath.read(payload, "$.scope")).isEqualTo("photos.read");
+  }
+
+  @Test
   void shouldRejectWrongOrUnknownClientCredentials() throws Exception {
     requestToken("client_credentials", "media-service", MEDIA_SECRET + "x")
         .andExpect(status().isUnauthorized())
