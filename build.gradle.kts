@@ -4,7 +4,7 @@ plugins {
     checkstyle
     pmd
     id("org.springframework.boot") version "4.1.2"
-    id("com.diffplug.spotless") version "8.11.0"
+    id("com.diffplug.spotless") version "8.12.0"
     id("com.github.spotbugs") version "6.5.13"
 }
 
